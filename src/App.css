@@ -1,0 +1,21 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.timeline-resize-handle {
+  flex-shrink: 0;
+  height: 5px;
+  cursor: ns-resize;
+  background: var(--border);
+  transition: background 0.15s;
+}
+
+.timeline-resize-handle:hover,
+.timeline-resize-handle:active {
+  background: var(--accent);
+}

@@ -1,0 +1,143 @@
+.tl-menu {
+  position: relative;
+}
+
+.tl-menu__trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 200px;
+}
+
+.tl-menu__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.tl-menu__chevron {
+  font-size: 9px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.tl-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  background: var(--surface-el);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 6px;
+  z-index: 200;
+}
+
+.tl-menu__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius);
+  padding: 0 6px;
+  height: 36px;
+  transition: background 0.1s;
+}
+
+.tl-menu__row:hover {
+  background: var(--surface-hover);
+}
+
+.tl-menu__row--active {
+  background: var(--accent-glow);
+}
+
+.tl-menu__row--active .tl-menu__name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tl-menu__name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-menu__input {
+  flex: 1;
+  height: 26px;
+  font-size: 13px;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+}
+
+.tl-menu__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.tl-menu__row:hover .tl-menu__actions {
+  opacity: 1;
+}
+
+.tl-menu__icon-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.tl-menu__icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.tl-menu__icon-btn--danger:hover {
+  background: rgba(255, 80, 80, 0.12);
+  color: #ff5555;
+}
+
+.tl-menu__divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+
+.tl-menu__add {
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.tl-menu__add:hover {
+  background: var(--accent-glow);
+}

@@ -1,0 +1,83 @@
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.controls__period {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 4px;
+  min-width: 180px;
+  text-align: center;
+}
+
+.controls__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.controls__spacer {
+  flex: 1;
+}
+
+.ctrl-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--surface-el);
+  color: var(--text-muted);
+  font-size: 15px;
+  transition: background 0.15s, color 0.15s;
+  border: 1px solid var(--border);
+}
+
+.ctrl-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.ctrl-btn:active {
+  transform: scale(0.93);
+}
+
+.ctrl-btn--text {
+  width: auto;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.ctrl-btn--accent {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+  padding: 0 14px;
+  width: auto;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.ctrl-btn--accent:hover {
+  background: #6a5be0;
+  color: #fff;
+}
+
+.ctrl-btn.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
