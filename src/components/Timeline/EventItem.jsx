@@ -52,7 +52,8 @@ export function useEventGeometry(layoutItem, viewStart, viewEnd, svgWidth, axisY
   const width = isPoint
     ? pointEventWidthPx(ev.title)
     : Math.max(rangeEndX - anchorX, EVENT_MIN_WIDTH);
-  const rectX = getRectX(anchorX, width, align);
+  // Alignment only shifts point events; range events always span exact dates
+  const rectX = isPoint ? getRectX(anchorX, width, align) : anchorX;
 
   const yBottom = axisY - CONNECTOR_MARGIN;
   const yTop = yBottom - yOffset;

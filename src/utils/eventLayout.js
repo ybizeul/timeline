@@ -44,15 +44,22 @@ function visualExtent(ev, pxPerMs) {
 
   const align = ev.align ?? 'left';
   let visStart, visEnd;
-  if (align === 'center') {
-    visStart = start - widthMs / 2;
-    visEnd   = start + widthMs / 2;
-  } else if (align === 'right') {
-    visStart = start - widthMs;
-    visEnd   = start;
+  if (isPoint) {
+    // Alignment shifts point events relative to anchor
+    if (align === 'center') {
+      visStart = start - widthMs / 2;
+      visEnd   = start + widthMs / 2;
+    } else if (align === 'right') {
+      visStart = start - widthMs;
+      visEnd   = start;
+    } else {
+      visStart = start;
+      visEnd   = start + widthMs;
+    }
   } else {
+    // Range events always span exact dates
     visStart = start;
-    visEnd   = start + widthMs;
+    visEnd   = rawEnd;
   }
 
   return { start, end: rawEnd, visStart, visEnd };

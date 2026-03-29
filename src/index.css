@@ -21,6 +21,7 @@
   --today-dim: rgba(255, 92, 92, 0.15);
   --axis: #2a2a3a;
   --tick: #3a3a50;
+  --weekend-bg: rgba(124, 108, 252, 0.03);
   --radius: 6px;
   --radius-lg: 10px;
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);

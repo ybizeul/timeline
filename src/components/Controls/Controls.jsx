@@ -23,6 +23,7 @@ function formatPeriod(viewStart, viewEnd) {
 
 export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScrollRight, onToday, onAddEvent,
   showToday, onToggleToday,
+  showWeekends, onToggleWeekends,
   timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline }) {
   const { viewStart, viewEnd } = viewport;
   const periodLabel = useMemo(() => formatPeriod(viewStart, viewEnd), [viewStart, viewEnd]);
@@ -51,6 +52,13 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
         title={showToday ? 'Hide today marker' : 'Show today marker'}
       >
         {showToday ? '⊘ marker' : '⊕ marker'}
+      </button>
+      <button
+        className={`ctrl-btn ctrl-btn--text${showWeekends ? ' is-active' : ''}`}
+        onClick={onToggleWeekends}
+        title={showWeekends ? 'Hide weekend highlights' : 'Show weekend highlights'}
+      >
+        {showWeekends ? '⊘ weekends' : '⊕ weekends'}
       </button>
       <span className="controls__period">{periodLabel}</span>
       <div className="controls__spacer" />

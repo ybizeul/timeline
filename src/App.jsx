@@ -29,6 +29,7 @@ export default function App() {
 
   const [editor, setEditor] = useState({ isOpen: false, event: null, defaultStart: null });
   const [showToday, setShowToday] = useState(true);
+  const [showWeekends, setShowWeekends] = useState(true);
   const [tlHeight, setTlHeight] = useState(DEFAULT_TL_HEIGHT);
   const resizeDragRef = useRef(null);
 
@@ -93,6 +94,8 @@ export default function App() {
         onAddEvent={openAddEvent}
         showToday={showToday}
         onToggleToday={() => setShowToday(v => !v)}
+        showWeekends={showWeekends}
+        onToggleWeekends={() => setShowWeekends(v => !v)}
         timelines={timelines}
         activeTimelineId={activeId}
         onSwitchTimeline={switchTimeline}
@@ -108,6 +111,7 @@ export default function App() {
         onPan={panBy}
         onEventClick={openEditEvent}
         showToday={showToday}
+        showWeekends={showWeekends}
         height={tlHeight}
       />
       <div className="timeline-resize-handle" onPointerDown={handleResizePointerDown} />

@@ -6,7 +6,7 @@ import './Timeline.css';
 
 const ZOOM_SENSITIVITY = 0.001;
 
-export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEventClick, showToday, height }) {
+export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEventClick, showToday, showWeekends, height }) {
   const { viewStart, viewEnd } = viewport;
   const wrapperRef = useRef(null);
   const [svgSize, setSvgSize] = useState({ width: 800, height: 400 });
@@ -96,6 +96,7 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
           viewEnd={viewEnd}
           svgWidth={svgSize.width}
           axisY={svgSize.height - LABEL_STRIP_H}
+          showWeekends={showWeekends}
         />
         {showToday && (
           <TodayLine
