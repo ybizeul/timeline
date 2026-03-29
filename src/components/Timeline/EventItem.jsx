@@ -1,5 +1,5 @@
 import { tToX } from '../../utils/timeScale';
-import { pointEventWidthPx } from '../../utils/eventLayout';
+import { eventDisplayWidthPx } from '../../utils/eventLayout';
 
 const BASE_HEIGHT      = 28;  // no-notes rect height: PAD+ASCENT+ASCENT+DESCENT+PAD = 8+8+8+3+8 = 35 → round to maintain compat
 const PAD              = 8;   // uniform padding all four sides
@@ -49,9 +49,10 @@ export function useEventGeometry(layoutItem, viewStart, viewEnd, svgWidth, axisY
   const anchorX = tToX(start, viewStart, viewEnd, svgWidth);
   const isPoint = !ev.endDate;
   const rangeEndX = !isPoint ? tToX(end, viewStart, viewEnd, svgWidth) : anchorX;
+  const textW = eventDisplayWidthPx(ev);
   const width = isPoint
-    ? pointEventWidthPx(ev.title)
-    : Math.max(rangeEndX - anchorX, EVENT_MIN_WIDTH);
+    ? textW
+    : Math.max(rangeEndX - anchorX, EVENT_MIN_WIDTH, textW);
   // Alignment only shifts point events; range events always span exact dates
   const rectX = isPoint ? getRectX(anchorX, width, align) : anchorX;
 
@@ -89,18 +90,13 @@ function EventItemSolid({ ev, geo }) {
   const titleY = yTop + PAD + TEXT_ASCENT;
   const notesY = titleY + NOTES_LINE_H;
 
-  // Ranged events: rect spans exact time range, text may overflow (no clipping on right)
-  // Point events: rect expands to contain text
-  const CHAR_W = 6.5;
-  const allLines = [ev.title, ...lines];
-  const textMinW = Math.max(...allLines.map(l => (l?.length ?? 0) * CHAR_W + PAD * 2));
-  const displayW = isPoint ? Math.max(width, textMinW) : width;
-  const displayX = isPoint ? getRectX(anchorX, displayW, align) : rectX;
+  const displayW = width;
+  const displayX = rectX;
   const textX = isCentered ? displayX + displayW / 2 : displayX + PAD;
 
   return (
     <>
-      <Connector anchorX={anchorX} yBottom={yBottom} yConnectTop={yTop + evH} color={ev.color} />
+      {isPoint && <Connector anchorX={anchorX} yBottom={yBottom} yConnectTop={yTop + evH} color={ev.color} />}
       <rect
         x={displayX} y={yTop}
         width={displayW} height={evH}
@@ -157,19 +153,15 @@ function EventItemOutline({ ev, geo }) {
   const titleBaselineY = yTop + PAD + TEXT_ASCENT;
   const notesBaselineY = titleBaselineY + NOTES_LINE_H;
 
-  // Ranged events: frame spans exact time range; point events: expand to text
-  const CHAR_W = 6.5;
-  const allLines = [ev.title, ...lines];
-  const textMinW = Math.max(...allLines.map(l => (l?.length ?? 0) * CHAR_W + OUTLINE_PAD * 2));
-  const displayW = isPoint ? Math.max(width, textMinW) : width;
-  const displayX = isPoint ? getRectX(anchorX, displayW, align) : rectX;
+  const displayW = width;
+  const displayX = rectX;
   const isCentered = isPoint && align === 'center';
   const textX = isCentered ? displayX + displayW / 2 : displayX + OUTLINE_PAD;
   const textAnchor = isCentered ? 'middle' : 'start';
 
   return (
     <>
-      <Connector anchorX={anchorX} yBottom={yBottom} yConnectTop={yTop + evH} color={ev.color} />
+      {isPoint && <Connector anchorX={anchorX} yBottom={yBottom} yConnectTop={yTop + evH} color={ev.color} />}
       <rect
         x={displayX} y={yTop}
         width={displayW} height={frameH}
@@ -244,14 +236,12 @@ function EventItemLabel({ ev, geo }) {
         />
       ) : (
         <>
-          {/* Horizontal underline spanning the time range — no vertical drops */}
+          {/* Horizontal underline spanning the time range */}
           <line
             x1={anchorX} y1={barY}
             x2={rangeEndX} y2={barY}
             stroke={ev.color} strokeWidth={2} opacity={0.7}
           />
-          <circle cx={anchorX}   cy={yBottom + CONNECTOR_MARGIN} r={2.5} fill={ev.color} opacity={0.7} />
-          <circle cx={rangeEndX} cy={yBottom + CONNECTOR_MARGIN} r={2.5} fill={ev.color} opacity={0.5} />
         </>
       )}
       {/* Invisible hit-area */}

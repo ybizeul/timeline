@@ -6,9 +6,9 @@ export function EventLayer({ events, viewStart, viewEnd, svgWidth, axisY, onEven
   const laid = useMemo(
     () => {
       const items = layoutEvents(events, viewStart, viewEnd, svgWidth);
-      // Render higher lanes first so lower-lane events (and their connectors)
-      // paint on top — connectors from higher lanes pass under lower-lane events.
-      return [...items].sort((a, b) => b.lane - a.lane);
+      // Render higher events first so lower events (and their connectors)
+      // paint on top — connectors from higher events pass under lower ones.
+      return [...items].sort((a, b) => b.yOffset - a.yOffset);
     },
     [events, viewStart, viewEnd, svgWidth]
   );

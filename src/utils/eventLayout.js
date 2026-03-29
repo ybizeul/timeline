@@ -1,11 +1,10 @@
 const MIN_EVENT_PX  = 8;
-const LANE_GAP_PX   = 4;
-const LANE_V_GAP    = 8;
+const LANE_GAP_PX   = 6;
+const LANE_V_GAP    = 10;
 const PAD           = 8;
 const TEXT_ASCENT   = 8;
 const TEXT_DESCENT  = 3;
 const NOTES_LINE_H  = 14;
-const BASE_HEIGHT   = PAD + TEXT_ASCENT + TEXT_DESCENT + PAD; // no-notes height
 
 /** Must stay in sync with EventItem.jsx calcEventHeight(). */
 function eventHeightPx(ev) {
@@ -13,56 +12,17 @@ function eventHeightPx(ev) {
   return PAD + TEXT_ASCENT + TEXT_DESCENT + PAD + n * NOTES_LINE_H;
 }
 
-// Point event (no end date) — width computed from title text, fixed in pixels
-const POINT_CHAR_W  = 6.5; // approximate px per character at 11px Inter
-const POINT_PADDING = 20;  // left + right padding inside the rect
-const POINT_MIN_W   = 40;  // minimum width even for very short titles
+// Text width estimation — must be conservative to prevent any overflow
+const CHAR_W    = 8;   // generous approx px per character at 11px Inter (covers bold + wide chars)
+const BOX_PAD   = 24;  // horizontal padding: PAD(8) each side + 8px safety margin
+const MIN_W     = 40;  // minimum width even for very short titles
 
-/** Fixed pixel width for a point event, independent of zoom level. */
-export function pointEventWidthPx(title) {
-  return Math.max((title?.length ?? 0) * POINT_CHAR_W + POINT_PADDING, POINT_MIN_W);
-}
-
-/**
- * Compute the visual [visStart, visEnd] in milliseconds for an event,
- * accounting for alignment and (for point events) fixed pixel width.
- */
-function visualExtent(ev, pxPerMs) {
-  const start = new Date(ev.startDate).getTime();
-  const isPoint = !ev.endDate;
-
-  let widthMs;
-  if (isPoint) {
-    // Convert fixed pixel width → ms at current zoom so lane reservation is accurate
-    widthMs = pointEventWidthPx(ev.title) / pxPerMs;
-  } else {
-    const rawEnd = new Date(ev.endDate).getTime();
-    widthMs = Math.max(rawEnd - start, MIN_EVENT_PX / pxPerMs);
-  }
-
-  const rawEnd = isPoint ? start + widthMs : new Date(ev.endDate).getTime();
-
-  const align = ev.align ?? 'left';
-  let visStart, visEnd;
-  if (isPoint) {
-    // Alignment shifts point events relative to anchor
-    if (align === 'center') {
-      visStart = start - widthMs / 2;
-      visEnd   = start + widthMs / 2;
-    } else if (align === 'right') {
-      visStart = start - widthMs;
-      visEnd   = start;
-    } else {
-      visStart = start;
-      visEnd   = start + widthMs;
-    }
-  } else {
-    // Range events always span exact dates
-    visStart = start;
-    visEnd   = rawEnd;
-  }
-
-  return { start, end: rawEnd, visStart, visEnd };
+/** Pixel width of the bounding box for an event (frame for solid/outline, text extent for label). */
+export function eventDisplayWidthPx(ev) {
+  const lines = (ev.showNotes && ev.description) ? ev.description.split('\n') : [];
+  const allLines = [ev.title, ...lines];
+  const maxLineW = Math.max(...allLines.map(l => (l?.length ?? 0) * CHAR_W + BOX_PAD));
+  return Math.max(maxLineW, MIN_W);
 }
 
 export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
@@ -70,49 +30,87 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
 
   const duration = viewEnd - viewStart;
   const pxPerMs = svgWidth / duration;
-  const gapMs = LANE_GAP_PX / pxPerMs;
 
-  // Enrich with visual extents
-  const enriched = events.map(ev => ({
-    ev,
-    ...visualExtent(ev, pxPerMs),
-    heightPx: eventHeightPx(ev),
-  }));
+  const GAP_X = LANE_GAP_PX;
+  const GAP_Y = LANE_V_GAP;
 
-  // Sort by visual start so the greedy pass is left-to-right
-  enriched.sort((a, b) => a.visStart - b.visStart);
+  // Compute pixel-space bounding boxes for each event
+  const items = events.map(ev => {
+    const start = new Date(ev.startDate).getTime();
+    const isPoint = !ev.endDate;
+    const rawEnd = isPoint ? start : new Date(ev.endDate).getTime();
+    const heightPx = eventHeightPx(ev);
+    const textW = eventDisplayWidthPx(ev);
+    const style = ev.style ?? 'solid';
+    // Outline/solid frames have stroke width that extends beyond the rect
+    const strokeMargin = (style === 'outline') ? 2 : 0;
 
-  // Greedy lane assignment — compare visual extents, not raw timestamps
-  const lanes = []; // each lane tracks visEnd of its last event
-  const result = enriched.map(item => {
-    let assignedLane = -1;
-    for (let i = 0; i < lanes.length; i++) {
-      if (lanes[i].visEnd + gapMs <= item.visStart) {
-        assignedLane = i;
-        lanes[i].visEnd = item.visEnd;
-        break;
+    const anchorPx = (start - viewStart) * pxPerMs;
+    let leftPx, rightPx;
+
+    if (isPoint) {
+      const align = ev.align ?? 'left';
+      if (align === 'center') {
+        leftPx = anchorPx - textW / 2;
+        rightPx = anchorPx + textW / 2;
+      } else if (align === 'right') {
+        leftPx = anchorPx - textW;
+        rightPx = anchorPx;
+      } else {
+        leftPx = anchorPx;
+        rightPx = anchorPx + textW;
+      }
+    } else {
+      const endPx = (rawEnd - viewStart) * pxPerMs;
+      const rangeW = Math.max(endPx - anchorPx, MIN_EVENT_PX);
+      leftPx = anchorPx - strokeMargin;
+      rightPx = anchorPx + Math.max(rangeW, textW) + strokeMargin;
+    }
+
+    return { ev, start, end: rawEnd, leftPx, rightPx, heightPx: heightPx + strokeMargin * 2 };
+  });
+
+  // Sort by left edge (left-to-right placement)
+  items.sort((a, b) => a.leftPx - b.leftPx);
+
+  // Greedy 2D placement: for each event, find the lowest yOffset where
+  // its bounding box doesn't overlap any already-placed event.
+  // yOffset = distance from the axis baseline to the TOP of the event rect.
+  // Event occupies vertical span [yOffset - heightPx, yOffset] (in upward coords).
+  const placed = []; // { leftPx, rightPx, yBase, yTop } — yBase = bottom, yTop = top (upward coords)
+
+  const result = items.map(item => {
+    // Find all placed events that horizontally overlap (with gap)
+    const hConflicts = placed.filter(p =>
+      p.leftPx < item.rightPx + GAP_X && p.rightPx + GAP_X > item.leftPx
+    );
+
+    // Try to place at the lowest possible position (closest to axis)
+    // The lowest position is: yBase = GAP_Y, yTop = GAP_Y + heightPx
+    // Check all conflicting events and find the lowest gap that fits.
+
+    // Collect the vertical intervals that are occupied
+    // Sort conflicts by yBase so we can find gaps bottom-to-top
+    hConflicts.sort((a, b) => a.yBase - b.yBase);
+
+    let yBase = GAP_Y; // start trying from the bottom
+
+    for (const c of hConflicts) {
+      // If our proposed box [yBase, yBase + heightPx] overlaps with c [c.yBase, c.yTop]
+      const myTop = yBase + item.heightPx;
+      if (myTop + GAP_Y > c.yBase && yBase < c.yTop + GAP_Y) {
+        // Overlap — push above this conflict
+        yBase = c.yTop + GAP_Y;
       }
     }
-    if (assignedLane === -1) {
-      assignedLane = lanes.length;
-      lanes.push({ visEnd: item.visEnd });
-    }
-    return { ev: item.ev, start: item.start, end: item.end, lane: assignedLane };
+
+    const yTop = yBase + item.heightPx;
+    const yOffset = yTop; // distance from axis to top of event
+
+    placed.push({ leftPx: item.leftPx, rightPx: item.rightPx, yBase, yTop });
+
+    return { ev: item.ev, start: item.start, end: item.end, yOffset };
   });
 
-  // Pass 2: per-lane max heights → cumulative Y offsets from yBottom to yTop
-  const laneMaxH = [];
-  result.forEach(({ ev, lane }) => {
-    const h = eventHeightPx(ev);
-    if (laneMaxH[lane] === undefined || h > laneMaxH[lane]) laneMaxH[lane] = h;
-  });
-
-  const cumOffset = []; // cumOffset[i] = distance from yBottom to yTop of lane i
-  let acc = 0;
-  for (let i = 0; i < laneMaxH.length; i++) {
-    acc += LANE_V_GAP + laneMaxH[i];
-    cumOffset[i] = acc;
-  }
-
-  return result.map(item => ({ ...item, yOffset: cumOffset[item.lane] }));
+  return result;
 }

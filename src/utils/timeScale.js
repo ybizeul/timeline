@@ -134,7 +134,7 @@ export function getScaleTicks(viewStart, viewEnd, svgWidth) {
       }))
     : [];
 
-  return { majorTicks, minorTicks, level: major.id };
+  return { majorTicks, minorTicks, level: major.id, minorLevel: minor?.id ?? null };
 }
 
 // ── Weekend range generation ────────────────────────────────────────────────
@@ -172,4 +172,21 @@ export function tToX(t, viewStart, viewEnd, svgWidth) {
 
 export function xToT(x, viewStart, viewEnd, svgWidth) {
   return viewStart + (x / svgWidth) * (viewEnd - viewStart);
+}
+
+// ── Stable tick ranking (viewport-independent) ──────────────────────────────
+// Returns a deterministic integer rank for a tick timestamp so that
+// visibility decisions (rank % stride === 0) don't shift on scroll.
+
+export function tickRank(t, intervalId) {
+  switch (intervalId) {
+    case 'min15': return Math.round(t / (15 * MIN));
+    case 'hour':  return Math.round(t / HR);
+    case 'day':   return Math.round(t / DAY);
+    case 'week':  return Math.round(t / WEEK);
+    case 'month': { const d = new Date(t); return d.getFullYear() * 12 + d.getMonth(); }
+    case 'year':  return new Date(t).getFullYear();
+    case 'decade': return Math.floor(new Date(t).getFullYear() / 10);
+    default: return 0;
+  }
 }
