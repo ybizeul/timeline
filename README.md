@@ -4,6 +4,8 @@ A local, browser-based timeline app inspired by [time.graphics](https://time.gra
 
 ![Screenshot](screenshot.png)
 
+An instance is available on [https://timeline.tynsoe.org/](https://timeline.tynsoe.org/).
+
 ## Features
 
 - **Multiple timelines** — create, rename, and delete independent timelines from the toolbar
