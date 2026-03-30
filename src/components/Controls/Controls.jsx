@@ -67,18 +67,18 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
       {/* Toggle controls — hidden on mobile, in overflow menu */}
       <div className="controls__secondary">
         <button
-          className={`ctrl-btn ctrl-btn--text${showToday ? ' is-active' : ''}`}
+          className={`ctrl-btn ctrl-btn--text ctrl-btn--toggle${showToday ? ' is-active' : ''}`}
           onClick={onToggleToday}
           title={showToday ? 'Hide today marker' : 'Show today marker'}
         >
-          {showToday ? '⊘ marker' : '⊕ marker'}
+          <span className="ctrl-btn__icon">{showToday ? '⊘' : '⊕'}</span> today
         </button>
         <button
-          className={`ctrl-btn ctrl-btn--text${showWeekends ? ' is-active' : ''}`}
+          className={`ctrl-btn ctrl-btn--text ctrl-btn--toggle${showWeekends ? ' is-active' : ''}`}
           onClick={onToggleWeekends}
           title={showWeekends ? 'Hide weekend highlights' : 'Show weekend highlights'}
         >
-          {showWeekends ? '⊘ weekends' : '⊕ weekends'}
+          <span className="ctrl-btn__icon">{showWeekends ? '⊘' : '⊕'}</span> weekends
         </button>
       </div>
 
