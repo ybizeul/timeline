@@ -1,29 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
-import { format } from 'date-fns';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { EVENT_COLORS, DEFAULT_COLOR } from '../../utils/colors';
 import { EVENT_STYLES, DEFAULT_EVENT_STYLE } from '../Timeline/EventItem';
 import './EventEditor.css';
 
-function toDateInput(isoOrNull) {
-  if (!isoOrNull) return '';
-  try {
-    return format(new Date(isoOrNull), "yyyy-MM-dd'T'HH:mm");
-  } catch {
-    return '';
-  }
+function toDate(isoOrNull) {
+  if (!isoOrNull) return null;
+  try { return new Date(isoOrNull); } catch { return null; }
 }
 
-function fromDateInput(val) {
-  if (!val) return null;
-  return new Date(val).toISOString();
+function fromDate(d) {
+  if (!d) return null;
+  return d.toISOString();
 }
 
 function makeDraft(event, defaultStart) {
   if (event) {
     return {
       title: event.title,
-      startDate: toDateInput(event.startDate),
-      endDate: toDateInput(event.endDate),
+      startDate: toDate(event.startDate),
+      endDate: toDate(event.endDate),
       color: event.color ?? DEFAULT_COLOR,
       align: event.align ?? 'left',
       style: event.style ?? DEFAULT_EVENT_STYLE,
@@ -33,8 +30,8 @@ function makeDraft(event, defaultStart) {
   }
   return {
     title: '',
-    startDate: toDateInput(defaultStart ?? new Date().toISOString()),
-    endDate: '',
+    startDate: toDate(defaultStart) ?? new Date(),
+    endDate: null,
     color: DEFAULT_COLOR,
     align: 'left',
     style: DEFAULT_EVENT_STYLE,
@@ -65,8 +62,8 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
     onSave({
       ...(event ?? {}),
       title: draft.title.trim(),
-      startDate: fromDateInput(draft.startDate),
-      endDate: draft.endDate ? fromDateInput(draft.endDate) : null,
+      startDate: fromDate(draft.startDate),
+      endDate: draft.endDate ? fromDate(draft.endDate) : null,
       color: draft.color,
       align: draft.align,
       style: draft.style,
@@ -87,7 +84,7 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, onClose, handleSave]);
 
-  const canSave = draft.title.trim().length > 0 && draft.startDate.length > 0;
+  const canSave = draft.title.trim().length > 0 && draft.startDate != null;
 
   return (
     <>
@@ -132,11 +129,16 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
 
           <div className="ee-field">
             <label className="ee-label" htmlFor="ee-start">Start</label>
-            <input
+            <DatePicker
               id="ee-start"
-              type="datetime-local"
-              value={draft.startDate}
-              onChange={(e) => set('startDate', e.target.value)}
+              selected={draft.startDate}
+              onChange={(d) => set('startDate', d)}
+              showTimeSelect
+              timeIntervals={15}
+              timeFormat="HH:mm"
+              dateFormat="dd/MM/yyyy HH:mm"
+              className="ee-datepicker-input"
+              portalId="datepicker-portal"
             />
           </div>
 
@@ -145,12 +147,18 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
               End{' '}
               <span className="ee-label-note">(optional)</span>
             </label>
-            <input
+            <DatePicker
               id="ee-end"
-              type="datetime-local"
-              value={draft.endDate}
-              onChange={(e) => set('endDate', e.target.value)}
-              min={draft.startDate}
+              selected={draft.endDate}
+              onChange={(d) => set('endDate', d)}
+              showTimeSelect
+              timeIntervals={15}
+              timeFormat="HH:mm"
+              dateFormat="dd/MM/yyyy HH:mm"
+              minDate={draft.startDate}
+              className="ee-datepicker-input"
+              isClearable
+              portalId="datepicker-portal"
             />
           </div>
 

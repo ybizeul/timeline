@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { format } from 'date-fns';
+import { formatDate } from '../../utils/locale';
 import { TimelineMenu } from './TimelineMenu';
 import './Controls.css';
 
@@ -10,15 +10,15 @@ function formatPeriod(viewStart, viewEnd) {
   const durationDays = durationMs / (1000 * 3600 * 24);
 
   if (durationDays > 365 * 2) {
-    return `${format(start, 'yyyy')} – ${format(end, 'yyyy')}`;
+    return `${formatDate(start, 'yyyy')} – ${formatDate(end, 'yyyy')}`;
   }
   if (durationDays > 60) {
-    return `${format(start, 'MMM yyyy')} – ${format(end, 'MMM yyyy')}`;
+    return `${formatDate(start, 'MMM yyyy')} – ${formatDate(end, 'MMM yyyy')}`;
   }
   if (durationDays > 7) {
-    return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`;
+    return `${formatDate(start, 'MMM d')} – ${formatDate(end, 'MMM d, yyyy')}`;
   }
-  return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`;
+  return `${formatDate(start, 'MMM d')} – ${formatDate(end, 'MMM d, yyyy')}`;
 }
 
 export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScrollRight, onToday, onAddEvent,

@@ -1,22 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { format } from 'date-fns';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { EVENT_COLORS, DEFAULT_COLOR } from '../../utils/colors';
 import './EventModal.css';
 
-function toLocalInput(isoOrNull) {
-  if (!isoOrNull) return '';
-  try {
-    const d = new Date(isoOrNull);
-    // format to "YYYY-MM-DDTHH:mm" for datetime-local
-    return format(d, "yyyy-MM-dd'T'HH:mm");
-  } catch {
-    return '';
-  }
+function toDate(isoOrNull) {
+  if (!isoOrNull) return null;
+  try { return new Date(isoOrNull); } catch { return null; }
 }
 
-function fromLocalInput(val) {
-  if (!val) return null;
-  return new Date(val).toISOString();
+function fromDate(d) {
+  if (!d) return null;
+  return d.toISOString();
 }
 
 export function EventModal({ event, defaultStart, onSave, onDelete, onClose }) {
@@ -24,9 +19,9 @@ export function EventModal({ event, defaultStart, onSave, onDelete, onClose }) {
 
   const [title, setTitle] = useState(event?.title ?? '');
   const [startDate, setStartDate] = useState(
-    event ? toLocalInput(event.startDate) : toLocalInput(defaultStart)
+    event ? toDate(event.startDate) : (toDate(defaultStart) ?? new Date())
   );
-  const [endDate, setEndDate] = useState(event ? toLocalInput(event.endDate) : '');
+  const [endDate, setEndDate] = useState(event ? toDate(event.endDate) : null);
   const [color, setColor] = useState(event?.color ?? DEFAULT_COLOR);
   const [description, setDescription] = useState(event?.description ?? '');
 
@@ -36,8 +31,8 @@ export function EventModal({ event, defaultStart, onSave, onDelete, onClose }) {
     onSave({
       ...(event ?? {}),
       title: title.trim(),
-      startDate: fromLocalInput(startDate),
-      endDate: endDate ? fromLocalInput(endDate) : null,
+      startDate: fromDate(startDate),
+      endDate: endDate ? fromDate(endDate) : null,
       color,
       description: description.trim() || undefined,
     });
@@ -77,22 +72,33 @@ export function EventModal({ event, defaultStart, onSave, onDelete, onClose }) {
           <div className="modal__dates">
             <div className="modal__field">
               <label className="modal__label" htmlFor="ev-start">Start</label>
-              <input
+              <DatePicker
                 id="ev-start"
-                type="datetime-local"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                selected={startDate}
+                onChange={(d) => setStartDate(d)}
+                showTimeSelect
+                timeIntervals={15}
+                timeFormat="HH:mm"
+                dateFormat="dd/MM/yyyy HH:mm"
+                className="modal-datepicker-input"
+                portalId="datepicker-portal"
                 required
               />
             </div>
             <div className="modal__field">
               <label className="modal__label" htmlFor="ev-end">End (optional)</label>
-              <input
+              <DatePicker
                 id="ev-end"
-                type="datetime-local"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate}
+                selected={endDate}
+                onChange={(d) => setEndDate(d)}
+                showTimeSelect
+                timeIntervals={15}
+                timeFormat="HH:mm"
+                dateFormat="dd/MM/yyyy HH:mm"
+                minDate={startDate}
+                className="modal-datepicker-input"
+                isClearable
+                portalId="datepicker-portal"
               />
             </div>
           </div>

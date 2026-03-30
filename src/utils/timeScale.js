@@ -2,8 +2,8 @@ import {
   startOfYear, startOfMonth, startOfWeek, startOfDay, startOfHour,
   addYears, addMonths, addWeeks, addDays, addHours, addMinutes,
   getDay,
-  format,
 } from 'date-fns';
+import { formatDate } from './locale';
 
 // ── Target pixel spacing ────────────────────────────────────────────────────
 const TARGET_MAJOR_PX = 160;
@@ -122,14 +122,14 @@ export function getScaleTicks(viewStart, viewEnd, svgWidth) {
 
   const majorTicks = generateTicks(viewStart, viewEnd, major).map(t => ({
     t,
-    label: format(new Date(t), majorFmt),
+    label: formatDate(new Date(t), majorFmt),
     isMajor: true,
   }));
 
   const minorTicks = minor
     ? generateTicks(viewStart, viewEnd, minor).map(t => ({
         t,
-        label: format(new Date(t), minorFmt),
+        label: formatDate(new Date(t), minorFmt),
         isMajor: false,
       }))
     : [];
