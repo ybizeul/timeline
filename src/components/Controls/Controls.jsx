@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { formatDate } from '../../utils/locale';
 import { TimelineMenu } from './TimelineMenu';
 import './Controls.css';
@@ -27,6 +27,17 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
   timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline, onImportTimeline }) {
   const { viewStart, viewEnd } = viewport;
   const periodLabel = useMemo(() => formatPeriod(viewStart, viewEnd), [viewStart, viewEnd]);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef(null);
+
+  useEffect(() => {
+    if (!overflowOpen) return;
+    function onMouseDown(e) {
+      if (!overflowRef.current?.contains(e.target)) setOverflowOpen(false);
+    }
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [overflowOpen]);
 
   return (
     <div className="controls">
@@ -40,31 +51,69 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
         onImport={onImportTimeline}
       />
       <div className="controls__sep" />
-      <button className="ctrl-btn ctrl-btn--text" onClick={onScrollLeft} title="Scroll left">‹</button>
-      <button className="ctrl-btn ctrl-btn--text" onClick={onScrollRight} title="Scroll right">›</button>
-      <div className="controls__sep" />
+
+      {/* Secondary controls — hidden on mobile, shown in overflow menu instead */}
+      <div className="controls__secondary">
+        <button className="ctrl-btn ctrl-btn--text" onClick={onScrollLeft} title="Scroll left">‹</button>
+        <button className="ctrl-btn ctrl-btn--text" onClick={onScrollRight} title="Scroll right">›</button>
+        <div className="controls__sep" />
+      </div>
+
       <button className="ctrl-btn" onClick={onZoomIn} title="Zoom in">+</button>
       <button className="ctrl-btn" onClick={onZoomOut} title="Zoom out">−</button>
       <div className="controls__sep" />
       <button className="ctrl-btn ctrl-btn--text" onClick={onToday} title="Go to today">Today</button>
-      <button
-        className={`ctrl-btn ctrl-btn--text${showToday ? ' is-active' : ''}`}
-        onClick={onToggleToday}
-        title={showToday ? 'Hide today marker' : 'Show today marker'}
-      >
-        {showToday ? '⊘ marker' : '⊕ marker'}
-      </button>
-      <button
-        className={`ctrl-btn ctrl-btn--text${showWeekends ? ' is-active' : ''}`}
-        onClick={onToggleWeekends}
-        title={showWeekends ? 'Hide weekend highlights' : 'Show weekend highlights'}
-      >
-        {showWeekends ? '⊘ weekends' : '⊕ weekends'}
-      </button>
+
+      {/* Toggle controls — hidden on mobile, in overflow menu */}
+      <div className="controls__secondary">
+        <button
+          className={`ctrl-btn ctrl-btn--text${showToday ? ' is-active' : ''}`}
+          onClick={onToggleToday}
+          title={showToday ? 'Hide today marker' : 'Show today marker'}
+        >
+          {showToday ? '⊘ marker' : '⊕ marker'}
+        </button>
+        <button
+          className={`ctrl-btn ctrl-btn--text${showWeekends ? ' is-active' : ''}`}
+          onClick={onToggleWeekends}
+          title={showWeekends ? 'Hide weekend highlights' : 'Show weekend highlights'}
+        >
+          {showWeekends ? '⊘ weekends' : '⊕ weekends'}
+        </button>
+      </div>
+
+      {/* Overflow menu — visible only on mobile */}
+      <div className="controls__overflow" ref={overflowRef}>
+        <button
+          className="ctrl-btn controls__overflow-btn"
+          onClick={() => setOverflowOpen(o => !o)}
+          title="More options"
+        >⋯</button>
+        {overflowOpen && (
+          <div className="controls__overflow-dropdown">
+            <button className="controls__overflow-item" onClick={() => { onScrollLeft(); }}>‹ Scroll left</button>
+            <button className="controls__overflow-item" onClick={() => { onScrollRight(); }}>› Scroll right</button>
+            <div className="controls__overflow-divider" />
+            <button
+              className={`controls__overflow-item${showToday ? ' is-active' : ''}`}
+              onClick={() => { onToggleToday(); }}
+            >
+              {showToday ? '⊘ Today marker' : '⊕ Today marker'}
+            </button>
+            <button
+              className={`controls__overflow-item${showWeekends ? ' is-active' : ''}`}
+              onClick={() => { onToggleWeekends(); }}
+            >
+              {showWeekends ? '⊘ Weekends' : '⊕ Weekends'}
+            </button>
+          </div>
+        )}
+      </div>
+
       <span className="controls__period">{periodLabel}</span>
       <div className="controls__spacer" />
       <button className="ctrl-btn ctrl-btn--accent" onClick={onAddEvent}>
-        <span>+</span> Add event
+        <span>+</span> <span className="controls__add-label">Add event</span>
       </button>
     </div>
   );

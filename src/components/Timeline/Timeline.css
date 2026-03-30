@@ -5,6 +5,7 @@
   background: var(--bg);
   cursor: grab;
   user-select: none;
+  touch-action: none;
 }
 
 .timeline-wrapper.is-dragging {

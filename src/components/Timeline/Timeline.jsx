@@ -5,13 +5,15 @@ import { EventLayer } from './EventLayer';
 import './Timeline.css';
 
 const ZOOM_SENSITIVITY = 0.001;
+const DRAG_ZOOM_SENSITIVITY = 0.006;
+const DRAG_THRESHOLD = 4;
 
 export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEventClick, showToday, showWeekends, height }) {
   const { viewStart, viewEnd } = viewport;
   const wrapperRef = useRef(null);
   const [svgSize, setSvgSize] = useState({ width: 800, height: 400 });
   const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef(null); // { lastX, startX, hasMoved }
+  const dragRef = useRef(null); // { lastX, lastY, startX, startY, hasMoved, axis: null|'pan'|'zoom' }
   const wasRecentlyDraggingRef = useRef(false);
 
   // ResizeObserver
@@ -44,27 +46,47 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
   }, [handleWheel]);
 
   // Pointer drag handlers — threshold-based so clicks on events still fire
+  // Axis-locked: horizontal → pan, vertical → zoom
   const handlePointerDown = useCallback((e) => {
     if (e.button !== 0) return;
-    dragRef.current = { lastX: e.clientX, startX: e.clientX, hasMoved: false };
+    wrapperRef.current?.setPointerCapture(e.pointerId);
+    const rect = wrapperRef.current.getBoundingClientRect();
+    dragRef.current = {
+      lastX: e.clientX, lastY: e.clientY,
+      startX: e.clientX, startY: e.clientY,
+      cursorX: e.clientX - rect.left,
+      hasMoved: false, axis: null,
+    };
   }, []);
 
   const handlePointerMove = useCallback((e) => {
     if (!dragRef.current) return;
-    const dx = e.clientX - dragRef.current.lastX;
-    const totalMoved = Math.abs(e.clientX - dragRef.current.startX);
-    if (totalMoved > 4) {
-      if (!dragRef.current.hasMoved) {
-        dragRef.current.hasMoved = true;
-        wasRecentlyDraggingRef.current = true;
-        setIsDragging(true);
+    const d = dragRef.current;
+    const dx = e.clientX - d.lastX;
+    const dy = e.clientY - d.lastY;
+    const totalDx = Math.abs(e.clientX - d.startX);
+    const totalDy = Math.abs(e.clientY - d.startY);
+    const totalMoved = Math.max(totalDx, totalDy);
+
+    if (totalMoved > DRAG_THRESHOLD && !d.hasMoved) {
+      d.hasMoved = true;
+      d.axis = totalDx >= totalDy ? 'pan' : 'zoom';
+      wasRecentlyDraggingRef.current = true;
+      setIsDragging(true);
+    }
+
+    if (d.hasMoved) {
+      if (d.axis === 'pan') {
+        onPan(-dx);
+      } else {
+        // drag up (negative dy) = zoom in (factor < 1)
+        const factor = 1 + dy * DRAG_ZOOM_SENSITIVITY;
+        onWheel(d.cursorX, factor);
       }
     }
-    if (dragRef.current.hasMoved) {
-      onPan(-dx);
-    }
-    dragRef.current.lastX = e.clientX;
-  }, [onPan]);
+    d.lastX = e.clientX;
+    d.lastY = e.clientY;
+  }, [onPan, onWheel]);
 
   const handlePointerUp = useCallback(() => {
     dragRef.current = null;
