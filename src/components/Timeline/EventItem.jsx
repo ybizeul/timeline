@@ -5,7 +5,7 @@ const EVENT_MIN_WIDTH  = 8;
 const CONNECTOR_MARGIN = 4;
 const CALLOUT_HW       = 5;   // callout triangle base half-width
 const CALLOUT_H        = 4;   // callout triangle height (tip down)
-const CALLOUT_INSET    = 10;  // distance from rect edge to callout center
+const CALLOUT_EDGE_PAD = 12;  // min distance from anchorX to rect edge
 
 /** Canonical height for an event rect. */
 function calcEventHeight(numNoteLines) {
@@ -34,16 +34,11 @@ export const EVENT_STYLES = [
 export const DEFAULT_EVENT_STYLE = 'solid';
 
 // ── Shared geometry ───────────────────────────────────────────────────────────
+/** Position the rect so anchorX always falls inside it (with callout margin). */
 function getRectX(anchorX, width, align) {
   if (align === 'center') return anchorX - width / 2;
-  if (align === 'right')  return anchorX - width;
-  return anchorX;
-}
-
-function getCalloutCx(rectX, width, align) {
-  if (align === 'center') return rectX + width / 2;
-  if (align === 'right')  return rectX + width - CALLOUT_INSET;
-  return rectX + CALLOUT_INSET;
+  if (align === 'right')  return anchorX - width + CALLOUT_EDGE_PAD;
+  return anchorX - CALLOUT_EDGE_PAD;
 }
 
 /** Compute textX and textAnchor for a rect based on alignment. */
@@ -150,11 +145,11 @@ function EventItemSolid({ ev, geo }) {
   const displayW = width;
   const displayX = rectX;
   const { textX, textAnchor } = alignedText(displayX, displayW, align);
-  const calloutCx = isPoint ? getCalloutCx(displayX, displayW, align) : null;
+  const calloutCx = isPoint ? anchorX : null;
 
   return (
     <>
-      {isPoint && <Connector anchorX={calloutCx} yBottom={yBottom} yConnectTop={yTop + evH + CALLOUT_H} color={ev.color} />}
+      {isPoint && <Connector anchorX={anchorX} yBottom={yBottom} yConnectTop={yTop + evH + CALLOUT_H} color={ev.color} />}
       <path
         d={eventShapePath(displayX, yTop, displayW, evH, 5, calloutCx)}
         fill={ev.color}
@@ -212,11 +207,11 @@ function EventItemOutline({ ev, geo }) {
   const displayW = width;
   const displayX = rectX;
   const { textX, textAnchor } = alignedText(displayX, displayW, align);
-  const calloutCx = isPoint ? getCalloutCx(displayX, displayW, align) : null;
+  const calloutCx = isPoint ? anchorX : null;
 
   return (
     <>
-      {isPoint && <Connector anchorX={calloutCx} yBottom={yBottom} yConnectTop={yTop + evH + CALLOUT_H} color={ev.color} />}
+      {isPoint && <Connector anchorX={anchorX} yBottom={yBottom} yConnectTop={yTop + evH + CALLOUT_H} color={ev.color} />}
       <path
         d={eventShapePath(displayX, yTop, displayW, evH, 5, calloutCx)}
         fill="rgba(0,0,0,0.0)"

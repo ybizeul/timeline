@@ -63,15 +63,16 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
 
     if (isPoint) {
       const align = ev.align ?? 'left';
+      const CALLOUT_MARGIN = 12; // matches CALLOUT_EDGE_PAD in EventItem
       if (align === 'center') {
         leftPx = anchorPx - textW / 2;
         rightPx = anchorPx + textW / 2;
       } else if (align === 'right') {
-        leftPx = anchorPx - textW;
-        rightPx = anchorPx;
+        leftPx = anchorPx - textW + CALLOUT_MARGIN;
+        rightPx = anchorPx + CALLOUT_MARGIN;
       } else {
-        leftPx = anchorPx;
-        rightPx = anchorPx + textW;
+        leftPx = anchorPx - CALLOUT_MARGIN;
+        rightPx = anchorPx + textW - CALLOUT_MARGIN;
       }
     } else {
       const endPx = (rawEnd - viewStart) * pxPerMs;
