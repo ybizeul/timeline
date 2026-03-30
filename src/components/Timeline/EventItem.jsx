@@ -240,14 +240,11 @@ function EventItemLabel({ ev, geo }) {
 
   // Text position within the span
   let textX, textAnchor;
-  if (!isPoint && align === 'center') {
-    textX = anchorX + width / 2;
+  if (align === 'center') {
+    textX = rectX + width / 2;
     textAnchor = 'middle';
-  } else if (!isPoint && align === 'right') {
-    textX = rangeEndX - PAD_H;
-    textAnchor = 'end';
   } else if (align === 'right') {
-    textX = anchorX - PAD_H;
+    textX = (isPoint ? anchorX : rangeEndX) - PAD_H;
     textAnchor = 'end';
   } else {
     textX = anchorX + PAD_H;
