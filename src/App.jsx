@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Controls } from './components/Controls/Controls';
 import { Timeline } from './components/Timeline/Timeline';
 import { EventEditor } from './components/EventEditor/EventEditor';
@@ -30,8 +30,13 @@ export default function App() {
   const [editor, setEditor] = useState({ isOpen: false, event: null, defaultStart: null });
   const [showToday, setShowToday] = useState(true);
   const [showWeekends, setShowWeekends] = useState(true);
-  const [tlHeight, setTlHeight] = useState(DEFAULT_TL_HEIGHT);
+  const [tlHeight, setTlHeight] = useState(() => viewport.tlHeight ?? DEFAULT_TL_HEIGHT);
   const resizeDragRef = useRef(null);
+
+  // Restore tlHeight when switching timelines
+  useEffect(() => {
+    setTlHeight(viewport.tlHeight ?? DEFAULT_TL_HEIGHT);
+  }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleResizePointerDown = useCallback((e) => {
     e.preventDefault();
@@ -48,6 +53,17 @@ export default function App() {
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
   }, [tlHeight]);
+
+  // Persist tlHeight into per-timeline viewport storage
+  useEffect(() => {
+    const key = 'timeline-viewport-' + activeId;
+    try {
+      const raw = localStorage.getItem(key);
+      const data = raw ? JSON.parse(raw) : {};
+      data.tlHeight = tlHeight;
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch { /* ignore */ }
+  }, [activeId, tlHeight]);
 
   // Wheel zoom — called from Timeline
   const handleWheel = useCallback((cursorX, factor) => {

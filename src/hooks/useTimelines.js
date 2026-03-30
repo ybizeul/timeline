@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const TIMELINES_KEY    = 'timelines_index';
+const ACTIVE_KEY       = 'timelines_active';
 const DEFAULT_TIMELINE = { id: 'default', name: 'My Timeline' };
 
 function loadTimelines() {
@@ -20,7 +21,19 @@ function saveTimelines(list) {
 
 export function useTimelines() {
   const [timelines, setTimelines] = useState(() => loadTimelines());
-  const [activeId, setActiveId] = useState(() => loadTimelines()[0].id);
+  const [activeId, setActiveId] = useState(() => {
+    try {
+      const stored = localStorage.getItem(ACTIVE_KEY);
+      const list = loadTimelines();
+      if (stored && list.some(t => t.id === stored)) return stored;
+    } catch { /* ignore */ }
+    return loadTimelines()[0].id;
+  });
+
+  // Persist activeId on change
+  useEffect(() => {
+    try { localStorage.setItem(ACTIVE_KEY, activeId); } catch { /* ignore */ }
+  }, [activeId]);
 
   // If the active timeline was deleted, fall back to the first one
   useEffect(() => {

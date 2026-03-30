@@ -46,6 +46,13 @@ function getCalloutCx(rectX, width, align) {
   return rectX + CALLOUT_INSET;
 }
 
+/** Compute textX and textAnchor for a rect based on alignment. */
+function alignedText(rectX, rectW, align) {
+  if (align === 'center') return { textX: rectX + rectW / 2, textAnchor: 'middle' };
+  if (align === 'right')  return { textX: rectX + rectW - PAD_H, textAnchor: 'end' };
+  return { textX: rectX + PAD_H, textAnchor: 'start' };
+}
+
 /** SVG path for a rounded rect. If calloutCx is provided, adds a triangular notch in the bottom edge. */
 function eventShapePath(x, y, w, h, r, calloutCx) {
   const R = Math.min(r, w / 2, h / 2);
@@ -120,8 +127,7 @@ function EventItemSolid({ ev, geo }) {
 
   const displayW = width;
   const displayX = rectX;
-  const textX = displayX + displayW / 2;
-  const textAnchor = 'middle';
+  const { textX, textAnchor } = alignedText(displayX, displayW, align);
   const calloutCx = isPoint ? getCalloutCx(displayX, displayW, align) : null;
 
   return (
@@ -182,8 +188,7 @@ function EventItemOutline({ ev, geo }) {
 
   const displayW = width;
   const displayX = rectX;
-  const textX = displayX + displayW / 2;
-  const textAnchor = 'middle';
+  const { textX, textAnchor } = alignedText(displayX, displayW, align);
   const calloutCx = isPoint ? getCalloutCx(displayX, displayW, align) : null;
 
   return (
@@ -240,11 +245,13 @@ function EventItemLabel({ ev, geo }) {
 
   // Text position within the span
   let textX, textAnchor;
-  if (align === 'center') {
-    textX = rectX + width / 2;
+  if (isPoint) {
+    ({ textX, textAnchor } = alignedText(rectX, width, align));
+  } else if (align === 'center') {
+    textX = anchorX + (rangeEndX - anchorX) / 2;
     textAnchor = 'middle';
   } else if (align === 'right') {
-    textX = (isPoint ? anchorX : rangeEndX) - PAD_H;
+    textX = rangeEndX - PAD_H;
     textAnchor = 'end';
   } else {
     textX = anchorX + PAD_H;

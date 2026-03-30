@@ -8,15 +8,15 @@ const MAX_DURATION = 50 * 365 * 24 * 3600 * 1000; // 50 years
 const ZOOM_FACTOR = 0.15;
 const SCROLL_PAN_FRACTION = 0.2;
 const STORAGE_PREFIX = 'timeline-viewport-';
-const DEFAULT_VIEWPORT = { viewStart: NOW - DEFAULT_DURATION / 2, viewEnd: NOW + DEFAULT_DURATION / 2 };
+const DEFAULT_VIEWPORT = { viewStart: NOW - DEFAULT_DURATION / 2, viewEnd: NOW + DEFAULT_DURATION / 2, tlHeight: null };
 
 function loadViewport(activeId) {
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX + activeId);
     if (raw) {
-      const { viewStart, viewEnd } = JSON.parse(raw);
+      const { viewStart, viewEnd, tlHeight } = JSON.parse(raw);
       if (Number.isFinite(viewStart) && Number.isFinite(viewEnd) && viewEnd > viewStart) {
-        return { viewStart, viewEnd };
+        return { viewStart, viewEnd, tlHeight: Number.isFinite(tlHeight) ? tlHeight : null };
       }
     }
   } catch { /* ignore */ }
