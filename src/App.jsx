@@ -11,6 +11,8 @@ const MIN_TL_HEIGHT = 100;
 const DEFAULT_TL_HEIGHT = 320;
 
 export default function App() {
+  const { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline } = useTimelines();
+
   const {
     viewport,
     setSvgWidth,
@@ -21,9 +23,7 @@ export default function App() {
     scrollLeft,
     scrollRight,
     goToday,
-  } = useViewport();
-
-  const { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline } = useTimelines();
+  } = useViewport(activeId);
 
   const { events, addEvent, updateEvent, deleteEvent } = useEvents(activeId);
 

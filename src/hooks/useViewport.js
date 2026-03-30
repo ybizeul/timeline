@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { xToT } from '../utils/timeScale';
 
 const NOW = Date.now();
@@ -7,12 +7,34 @@ const MIN_DURATION = 3 * 60 * 60 * 1000;          // 3 hours
 const MAX_DURATION = 50 * 365 * 24 * 3600 * 1000; // 50 years
 const ZOOM_FACTOR = 0.15;
 const SCROLL_PAN_FRACTION = 0.2;
+const STORAGE_PREFIX = 'timeline-viewport-';
+const DEFAULT_VIEWPORT = { viewStart: NOW - DEFAULT_DURATION / 2, viewEnd: NOW + DEFAULT_DURATION / 2 };
 
-export function useViewport() {
-  const [viewport, setViewport] = useState({
-    viewStart: NOW - DEFAULT_DURATION / 2,
-    viewEnd: NOW + DEFAULT_DURATION / 2,
-  });
+function loadViewport(activeId) {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + activeId);
+    if (raw) {
+      const { viewStart, viewEnd } = JSON.parse(raw);
+      if (Number.isFinite(viewStart) && Number.isFinite(viewEnd) && viewEnd > viewStart) {
+        return { viewStart, viewEnd };
+      }
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_VIEWPORT;
+}
+
+export function useViewport(activeId) {
+  const [viewport, setViewport] = useState(() => loadViewport(activeId));
+
+  // Reload viewport when switching timelines
+  useEffect(() => {
+    setViewport(loadViewport(activeId));
+  }, [activeId]);
+
+  // Persist viewport on change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_PREFIX + activeId, JSON.stringify(viewport));
+  }, [activeId, viewport]);
 
   const svgWidthRef = useRef(800);
 
