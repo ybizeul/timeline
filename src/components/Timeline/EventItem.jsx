@@ -116,6 +116,28 @@ function Connector({ anchorX, yTop, yBottom, yConnectTop, color }) {
   );
 }
 
+// ── Range brackets  |‹ … ›|  ─────────────────────────────────────────────────
+const BRACKET_W  = 3;    // chevron inward depth
+const BRACKET_HH = 4;    // chevron half-height
+const BRACKET_SW = 1.2;
+const BRACKET_INSET = 3;  // inset from rect edge for solid/outline
+
+function RangeBrackets({ x1, x2, yTop, height, color, inset = 0, opacity = 0.55 }) {
+  const yMid = yTop + height / 2;
+  const lx = x1 + inset;
+  const rx = x2 - inset;
+  return (
+    <g style={{ pointerEvents: 'none' }} opacity={opacity}>
+      {/* Left ‹| */}
+      <polyline points={`${lx + BRACKET_W},${yMid - BRACKET_HH} ${lx},${yMid} ${lx + BRACKET_W},${yMid + BRACKET_HH}`}
+        fill="none" stroke={color} strokeWidth={BRACKET_SW} strokeLinecap="round" strokeLinejoin="round" />
+      {/* Right |› */}
+      <polyline points={`${rx - BRACKET_W},${yMid - BRACKET_HH} ${rx},${yMid} ${rx - BRACKET_W},${yMid + BRACKET_HH}`}
+        fill="none" stroke={color} strokeWidth={BRACKET_SW} strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  );
+}
+
 // ── Variant: solid (filled rectangle + white text) ────────────────────────────
 function EventItemSolid({ ev, geo }) {
   const { anchorX, rectX, width, yTop, yBottom, evH, isPoint } = geo;
@@ -139,6 +161,7 @@ function EventItemSolid({ ev, geo }) {
         opacity={0.9}
         style={{ transition: 'opacity 0.1s' }}
       />
+      {!isPoint && <RangeBrackets x1={displayX} x2={displayX + displayW} yTop={yTop} height={evH} color="#fff" inset={BRACKET_INSET} opacity={0.4} />}
       <rect
         x={displayX + 1} y={yTop + 1}
         width={Math.max(displayW - 2, 0)} height={PAD_V + FONT_SIZE / 2}
@@ -203,6 +226,7 @@ function EventItemOutline({ ev, geo }) {
         opacity={0.85}
         style={{ transition: 'opacity 0.1s' }}
       />
+      {!isPoint && <RangeBrackets x1={displayX} x2={displayX + displayW} yTop={yTop} height={evH} color={ev.color} inset={BRACKET_INSET} opacity={0.45} />}
       <text
         x={textX}
         y={titleBaselineY}
@@ -274,6 +298,7 @@ function EventItemLabel({ ev, geo }) {
             x2={rangeEndX} y2={barY}
             stroke={ev.color} strokeWidth={2} opacity={0.7}
           />
+          <RangeBrackets x1={anchorX} x2={rangeEndX} yTop={yTop} height={evH} color={ev.color} opacity={0.45} />
         </>
       )}
       {/* Invisible hit-area */}
