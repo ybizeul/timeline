@@ -3,9 +3,9 @@ import { eventDisplayWidthPx, PAD_H, PAD_V, FONT_SIZE, NOTES_GAP, NOTES_LINE_H }
 
 const EVENT_MIN_WIDTH  = 8;
 const CONNECTOR_MARGIN = 4;
-const CALLOUT_HW       = 5;   // callout triangle base half-width
-const CALLOUT_H        = 4;   // callout triangle height (tip down)
-const CALLOUT_EDGE_PAD = 12;  // min distance from anchorX to rect edge
+const CALLOUT_HW       = 6;   // callout triangle base half-width
+const CALLOUT_H        = 6;   // callout triangle height (tip down)
+const CALLOUT_EDGE_PAD = 13;  // min distance from anchorX to rect edge
 
 /** Canonical height for an event rect. */
 function calcEventHeight(numNoteLines) {
