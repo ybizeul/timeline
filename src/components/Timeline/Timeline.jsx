@@ -49,9 +49,9 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
   // Axis-locked: horizontal → pan, vertical → zoom
   const handlePointerDown = useCallback((e) => {
     if (e.button !== 0) return;
-    wrapperRef.current?.setPointerCapture(e.pointerId);
     const rect = wrapperRef.current.getBoundingClientRect();
     dragRef.current = {
+      pointerId: e.pointerId,
       lastX: e.clientX, lastY: e.clientY,
       startX: e.clientX, startY: e.clientY,
       cursorX: e.clientX - rect.left,
@@ -73,6 +73,8 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
       d.axis = totalDx >= totalDy ? 'pan' : 'zoom';
       wasRecentlyDraggingRef.current = true;
       setIsDragging(true);
+      // Capture pointer only once drag is confirmed, so clicks on events still fire
+      wrapperRef.current?.setPointerCapture(d.pointerId);
     }
 
     if (d.hasMoved) {
