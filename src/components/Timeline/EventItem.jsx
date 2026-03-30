@@ -266,49 +266,79 @@ function EventItemLabel({ ev, geo }) {
   const notesY = titleY + NOTES_GAP + NOTES_LINE_H / 2;
   const barY   = yTop + evH; // underline at bottom of event slot
 
-  // Text position within the span
-  let textX, textAnchor;
+  // Solid line covers the text area, dashed line extends below to the axis
+  const solidBottom = textBlockTop + evH;
+
+  // Text position and connector layout depend on alignment
+  let textX, textAnchor, hitX;
   if (isPoint) {
-    // Offset text to the right of the anchor line
-    const offsetX = rectX + LABEL_H_GAP;
-    ({ textX, textAnchor } = alignedText(offsetX, width, align));
+    if (align === 'center') {
+      // Text centered on the anchor line — no solid line, no horizontal gap
+      textX = anchorX;
+      textAnchor = 'middle';
+      hitX = rectX;
+    } else if (align === 'right') {
+      // Text block sits to the left of the anchor line
+      textX = anchorX - LABEL_H_GAP;
+      textAnchor = 'end';
+      hitX = anchorX - LABEL_H_GAP - width;
+    } else {
+      // Left: text block to the right of the anchor line
+      const offsetX = rectX + LABEL_H_GAP;
+      ({ textX, textAnchor } = alignedText(offsetX, width, align));
+      hitX = rectX + LABEL_H_GAP;
+    }
   } else if (align === 'center') {
     textX = anchorX + (rangeEndX - anchorX) / 2;
     textAnchor = 'middle';
+    hitX = rectX;
   } else if (align === 'right') {
     textX = rangeEndX - PAD_H;
     textAnchor = 'end';
+    hitX = rectX;
   } else {
     textX = anchorX + PAD_H;
     textAnchor = 'start';
+    hitX = rectX;
   }
-
-  // Solid line covers the text area, dashed line extends below to the axis
-  const solidBottom = textBlockTop + evH;
 
   return (
     <>
       {isPoint ? (
-        <>
-          {/* Solid line alongside the text block */}
-          <line
-            x1={anchorX} y1={textBlockTop}
-            x2={anchorX} y2={solidBottom}
-            stroke={ev.color}
-            strokeWidth={1.5}
-            opacity={0.5}
-          />
-          {/* Dashed line from below text to axis */}
-          <line
-            x1={anchorX} y1={solidBottom}
-            x2={anchorX} y2={yBottom}
-            stroke={ev.color}
-            strokeWidth={1.5}
-            strokeDasharray="3 3"
-            opacity={0.5}
-          />
-          <circle cx={anchorX} cy={yBottom + CONNECTOR_MARGIN} r={2.5} fill={ev.color} opacity={0.7} />
-        </>
+        align === 'center' ? (
+          <>
+            {/* Center: dashed line only, below the text block */}
+            <line
+              x1={anchorX} y1={solidBottom}
+              x2={anchorX} y2={yBottom}
+              stroke={ev.color}
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+              opacity={0.5}
+            />
+            <circle cx={anchorX} cy={yBottom + CONNECTOR_MARGIN} r={2.5} fill={ev.color} opacity={0.7} />
+          </>
+        ) : (
+          <>
+            {/* Left / Right: solid line alongside text, dashed below */}
+            <line
+              x1={anchorX} y1={textBlockTop}
+              x2={anchorX} y2={solidBottom}
+              stroke={ev.color}
+              strokeWidth={1.5}
+              opacity={0.5}
+            />
+            <line
+              x1={anchorX} y1={solidBottom}
+              x2={anchorX} y2={yBottom}
+              stroke={ev.color}
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+              opacity={0.5}
+            />
+            <circle cx={anchorX} cy={yBottom + CONNECTOR_MARGIN} r={2.5} fill={ev.color} opacity={0.7} />
+          </>
+        )
       ) : (
         <>
           {/* Horizontal underline spanning the time range */}
@@ -321,7 +351,7 @@ function EventItemLabel({ ev, geo }) {
         </>
       )}
       {/* Invisible hit-area */}
-      <rect x={isPoint ? rectX + LABEL_H_GAP : rectX} y={textBlockTop} width={width} height={evH} fill="transparent" rx={4} />
+      <rect x={hitX} y={textBlockTop} width={width} height={evH} fill="transparent" rx={4} />
       <text
         x={textX} y={titleY}
         textAnchor={textAnchor}
