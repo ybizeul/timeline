@@ -24,7 +24,7 @@ function formatPeriod(viewStart, viewEnd) {
 export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScrollRight, onToday, onAddEvent,
   showToday, onToggleToday,
   showWeekends, onToggleWeekends,
-  timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline }) {
+  timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline, onImportTimeline }) {
   const { viewStart, viewEnd } = viewport;
   const periodLabel = useMemo(() => formatPeriod(viewStart, viewEnd), [viewStart, viewEnd]);
 
@@ -37,6 +37,7 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
         onAdd={onAddTimeline}
         onRename={onRenameTimeline}
         onDelete={onDeleteTimeline}
+        onImport={onImportTimeline}
       />
       <div className="controls__sep" />
       <button className="ctrl-btn ctrl-btn--text" onClick={onScrollLeft} title="Scroll left">‹</button>

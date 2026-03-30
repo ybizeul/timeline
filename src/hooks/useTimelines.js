@@ -68,6 +68,7 @@ export function useTimelines() {
   const deleteTimeline = useCallback((id) => {
     // Remove this timeline's events from storage
     localStorage.removeItem(`timeline_events_${id}`);
+    localStorage.removeItem(`timeline-viewport-${id}`);
     setTimelines(prev => {
       const filtered = prev.filter(t => t.id !== id);
       const final = filtered.length > 0
@@ -79,5 +80,24 @@ export function useTimelines() {
     // activeId correction is handled by the effect above
   }, []);
 
-  return { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline };
+  const importTimeline = useCallback(async (file) => {
+    const { parseTimelineFile } = await import('../utils/io.js');
+    const { name, events, viewport } = await parseTimelineFile(file);
+    const newId = crypto.randomUUID();
+    // Store events
+    localStorage.setItem(`timeline_events_${newId}`, JSON.stringify(events));
+    // Store viewport if present
+    if (viewport) {
+      localStorage.setItem(`timeline-viewport-${newId}`, JSON.stringify(viewport));
+    }
+    // Add to index
+    setTimelines(prev => {
+      const next = [...prev, { id: newId, name }];
+      saveTimelines(next);
+      return next;
+    });
+    setActiveId(newId);
+  }, []);
+
+  return { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline, importTimeline };
 }

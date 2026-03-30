@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
+import { exportTimeline } from '../../utils/io';
 import './TimelineMenu.css';
 
-export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, onDelete }) {
+export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, onDelete, onImport }) {
   const [isOpen, setIsOpen]     = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const menuRef  = useRef(null);
   const inputRef = useRef(null);
+  const fileRef  = useRef(null);
 
   const activeName = timelines.find(t => t.id === activeId)?.name ?? 'Timeline';
 
@@ -108,6 +110,40 @@ export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, o
           >
             + New timeline
           </button>
+
+          <div className="tl-menu__divider" />
+
+          <div className="tl-menu__io-row">
+            <button
+              className="tl-menu__io-btn"
+              onClick={() => { exportTimeline(activeId); setIsOpen(false); }}
+            >
+              Export
+            </button>
+            <button
+              className="tl-menu__io-btn"
+              onClick={() => fileRef.current?.click()}
+            >
+              Import
+            </button>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                await onImport(file);
+              } catch (err) {
+                alert(err.message);
+              }
+              e.target.value = '';
+              setIsOpen(false);
+            }}
+          />
         </div>
       )}
     </div>

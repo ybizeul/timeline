@@ -141,3 +141,30 @@
 .tl-menu__add:hover {
   background: var(--accent-glow);
 }
+
+.tl-menu__io-row {
+  display: flex;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.tl-menu__io-btn {
+  flex: 1;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.tl-menu__io-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}

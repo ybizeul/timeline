@@ -11,7 +11,7 @@ const MIN_TL_HEIGHT = 100;
 const DEFAULT_TL_HEIGHT = 320;
 
 export default function App() {
-  const { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline } = useTimelines();
+  const { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline, importTimeline } = useTimelines();
 
   const {
     viewport,
@@ -118,6 +118,7 @@ export default function App() {
         onAddTimeline={addTimeline}
         onRenameTimeline={renameTimeline}
         onDeleteTimeline={deleteTimeline}
+        onImportTimeline={importTimeline}
       />
       <Timeline
         viewport={viewport}
