@@ -1,28 +1,42 @@
 const MIN_EVENT_PX  = 8;
 const LANE_GAP_PX   = 6;
 const LANE_V_GAP    = 10;
-const PAD           = 8;
-const TEXT_ASCENT   = 8;
-const TEXT_DESCENT  = 3;
-const NOTES_LINE_H  = 14;
+export const PAD_H         = 10;
+export const PAD_V         = 8;
+export const FONT_SIZE     = 11;
+export const NOTES_GAP     = 15;
+export const NOTES_LINE_H  = 14;
 
 /** Must stay in sync with EventItem.jsx calcEventHeight(). */
 function eventHeightPx(ev) {
   const n = (ev.showNotes && ev.description) ? ev.description.split('\n').length : 0;
-  return PAD + TEXT_ASCENT + TEXT_DESCENT + PAD + n * NOTES_LINE_H;
+  if (n === 0) return PAD_V + FONT_SIZE + PAD_V;
+  return PAD_V + FONT_SIZE + NOTES_GAP + (n - 1) * NOTES_LINE_H + FONT_SIZE + PAD_V;
 }
 
-// Text width estimation — must be conservative to prevent any overflow
-const CHAR_W    = 8;   // generous approx px per character at 11px Inter (covers bold + wide chars)
-const BOX_PAD   = 24;  // horizontal padding: PAD(8) each side + 8px safety margin
-const MIN_W     = 40;  // minimum width even for very short titles
+// Text width measurement using Canvas 2D — pixel-accurate
+const _canvas = typeof document !== 'undefined' && document.createElement('canvas');
+const _ctx = _canvas && _canvas.getContext('2d');
+const TITLE_FONT = '600 11px Inter, system-ui, -apple-system, sans-serif';
+const NOTES_FONT = '400 11px Inter, system-ui, -apple-system, sans-serif';
+const MIN_W     = 24;  // minimum width even for very short titles
+
+function measureTextWidth(text, font) {
+  if (!_ctx) return (text?.length ?? 0) * 7; // SSR fallback
+  _ctx.font = font;
+  return _ctx.measureText(text).width;
+}
 
 /** Pixel width of the bounding box for an event (frame for solid/outline, text extent for label). */
 export function eventDisplayWidthPx(ev) {
-  const lines = (ev.showNotes && ev.description) ? ev.description.split('\n') : [];
-  const allLines = [ev.title, ...lines];
-  const maxLineW = Math.max(...allLines.map(l => (l?.length ?? 0) * CHAR_W + BOX_PAD));
-  return Math.max(maxLineW, MIN_W);
+  const titleW = measureTextWidth(ev.title, TITLE_FONT);
+  let maxW = titleW;
+  if (ev.showNotes && ev.description) {
+    for (const line of ev.description.split('\n')) {
+      maxW = Math.max(maxW, measureTextWidth(line, NOTES_FONT));
+    }
+  }
+  return Math.max(maxW + PAD_H * 2, MIN_W);
 }
 
 export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
@@ -42,8 +56,7 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
     const heightPx = eventHeightPx(ev);
     const textW = eventDisplayWidthPx(ev);
     const style = ev.style ?? 'solid';
-    // Outline/solid frames have stroke width that extends beyond the rect
-    const strokeMargin = (style === 'outline') ? 2 : 0;
+    const strokeMargin = 0;
 
     const anchorPx = (start - viewStart) * pxPerMs;
     let leftPx, rightPx;

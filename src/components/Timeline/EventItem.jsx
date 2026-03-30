@@ -1,17 +1,16 @@
 import { tToX } from '../../utils/timeScale';
-import { eventDisplayWidthPx } from '../../utils/eventLayout';
+import { eventDisplayWidthPx, PAD_H, PAD_V, FONT_SIZE, NOTES_GAP, NOTES_LINE_H } from '../../utils/eventLayout';
 
-const BASE_HEIGHT      = 28;  // no-notes rect height: PAD+ASCENT+ASCENT+DESCENT+PAD = 8+8+8+3+8 = 35 → round to maintain compat
-const PAD              = 8;   // uniform padding all four sides
-const TEXT_ASCENT      = 8;   // approx cap height at 11px Inter
-const TEXT_DESCENT     = 3;   // approx descender
-const NOTES_LINE_H     = 14;  // px per notes line
 const EVENT_MIN_WIDTH  = 8;
 const CONNECTOR_MARGIN = 4;
+const CALLOUT_HW       = 5;   // callout triangle base half-width
+const CALLOUT_H        = 4;   // callout triangle height (tip down)
+const CALLOUT_INSET    = 10;  // distance from rect edge to callout center
 
-/** Canonical height for an event rect. No notes: PAD+ASCENT+DESCENT+PAD. With notes: add n×NOTES_LINE_H. */
+/** Canonical height for an event rect. */
 function calcEventHeight(numNoteLines) {
-  return PAD + TEXT_ASCENT + TEXT_DESCENT + PAD + numNoteLines * NOTES_LINE_H;
+  if (numNoteLines === 0) return PAD_V + FONT_SIZE + PAD_V;
+  return PAD_V + FONT_SIZE + NOTES_GAP + (numNoteLines - 1) * NOTES_LINE_H + FONT_SIZE + PAD_V;
 }
 
 /** Split description into lines (empty array when notes are off or blank). */
@@ -39,6 +38,37 @@ function getRectX(anchorX, width, align) {
   if (align === 'center') return anchorX - width / 2;
   if (align === 'right')  return anchorX - width;
   return anchorX;
+}
+
+function getCalloutCx(rectX, width, align) {
+  if (align === 'center') return rectX + width / 2;
+  if (align === 'right')  return rectX + width - CALLOUT_INSET;
+  return rectX + CALLOUT_INSET;
+}
+
+/** SVG path for a rounded rect. If calloutCx is provided, adds a triangular notch in the bottom edge. */
+function eventShapePath(x, y, w, h, r, calloutCx) {
+  const R = Math.min(r, w / 2, h / 2);
+  // Bottom edge y
+  const by = y + h;
+  if (calloutCx == null) {
+    // Plain rounded rect
+    return `M${x + R},${y}`
+      + `H${x + w - R}A${R},${R},0,0,1,${x + w},${y + R}`
+      + `V${by - R}A${R},${R},0,0,1,${x + w - R},${by}`
+      + `H${x + R}A${R},${R},0,0,1,${x},${by - R}`
+      + `V${y + R}A${R},${R},0,0,1,${x + R},${y}Z`;
+  }
+  // Rounded rect with callout notch in bottom edge
+  const cl = calloutCx - CALLOUT_HW;
+  const cr = calloutCx + CALLOUT_HW;
+  const ct = by + CALLOUT_H;
+  return `M${x + R},${y}`
+    + `H${x + w - R}A${R},${R},0,0,1,${x + w},${y + R}`
+    + `V${by - R}A${R},${R},0,0,1,${x + w - R},${by}`
+    + `H${cr}L${calloutCx},${ct}L${cl},${by}`
+    + `H${x + R}A${R},${R},0,0,1,${x},${by - R}`
+    + `V${y + R}A${R},${R},0,0,1,${x + R},${y}Z`;
 }
 
 export function useEventGeometry(layoutItem, viewStart, viewEnd, svgWidth, axisY) {
@@ -83,31 +113,29 @@ function Connector({ anchorX, yTop, yBottom, yConnectTop, color }) {
 function EventItemSolid({ ev, geo }) {
   const { anchorX, rectX, width, yTop, yBottom, evH, isPoint } = geo;
   const align = ev.align ?? 'left';
-  const isCentered = isPoint && align === 'center';
-  const textAnchor = isCentered ? 'middle' : 'start';
   const lines = notesLines(ev);
 
-  const titleY = yTop + PAD + TEXT_ASCENT;
-  const notesY = titleY + NOTES_LINE_H;
+  const titleY = yTop + PAD_V + FONT_SIZE / 2;
+  const notesY = titleY + NOTES_GAP + NOTES_LINE_H / 2;
 
   const displayW = width;
   const displayX = rectX;
-  const textX = isCentered ? displayX + displayW / 2 : displayX + PAD;
+  const textX = displayX + displayW / 2;
+  const textAnchor = 'middle';
+  const calloutCx = isPoint ? getCalloutCx(displayX, displayW, align) : null;
 
   return (
     <>
-      {isPoint && <Connector anchorX={anchorX} yBottom={yBottom} yConnectTop={yTop + evH} color={ev.color} />}
-      <rect
-        x={displayX} y={yTop}
-        width={displayW} height={evH}
-        rx={5}
+      {isPoint && <Connector anchorX={calloutCx} yBottom={yBottom} yConnectTop={yTop + evH + CALLOUT_H} color={ev.color} />}
+      <path
+        d={eventShapePath(displayX, yTop, displayW, evH, 5, calloutCx)}
         fill={ev.color}
         opacity={0.9}
         style={{ transition: 'opacity 0.1s' }}
       />
       <rect
         x={displayX + 1} y={yTop + 1}
-        width={Math.max(displayW - 2, 0)} height={PAD + TEXT_ASCENT}
+        width={Math.max(displayW - 2, 0)} height={PAD_V + FONT_SIZE / 2}
         rx={4}
         fill="rgba(255,255,255,0.08)"
         style={{ pointerEvents: 'none' }}
@@ -115,9 +143,10 @@ function EventItemSolid({ ev, geo }) {
       <text
         x={textX}
         y={titleY}
+        dominantBaseline="central"
         textAnchor={textAnchor}
         fill="#fff"
-        fontSize={11} fontWeight="500" fontFamily="inherit"
+        fontSize={FONT_SIZE} fontWeight="500" fontFamily="inherit"
         style={{ pointerEvents: 'none', userSelect: 'none' }}
       >
         {ev.title}
@@ -126,9 +155,10 @@ function EventItemSolid({ ev, geo }) {
         <text
           x={textX}
           y={notesY}
+          dominantBaseline="central"
           textAnchor={textAnchor}
           fill="rgba(255,255,255,0.65)"
-          fontSize={11} fontFamily="inherit"
+          fontSize={FONT_SIZE} fontFamily="inherit"
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
           {lines.map((line, i) => (
@@ -141,43 +171,40 @@ function EventItemSolid({ ev, geo }) {
 }
 
 // ── Variant: outline (border-only frame + colored text) ─────────────────────
-const OUTLINE_PAD    = PAD;  // reuse shared padding
-const OUTLINE_CHAR_W = 6.5; // approx px per char at 11px
 
 function EventItemOutline({ ev, geo }) {
   const { anchorX, rectX, width, yTop, yBottom, evH, isPoint } = geo;
   const align = ev.align ?? 'left';
   const lines = notesLines(ev);
 
-  const frameH = calcEventHeight(lines.length);
-  const titleBaselineY = yTop + PAD + TEXT_ASCENT;
-  const notesBaselineY = titleBaselineY + NOTES_LINE_H;
+  const titleBaselineY = yTop + PAD_V + FONT_SIZE / 2;
+  const notesBaselineY = titleBaselineY + NOTES_GAP + NOTES_LINE_H / 2;
 
   const displayW = width;
   const displayX = rectX;
-  const isCentered = isPoint && align === 'center';
-  const textX = isCentered ? displayX + displayW / 2 : displayX + OUTLINE_PAD;
-  const textAnchor = isCentered ? 'middle' : 'start';
+  const textX = displayX + displayW / 2;
+  const textAnchor = 'middle';
+  const calloutCx = isPoint ? getCalloutCx(displayX, displayW, align) : null;
 
   return (
     <>
-      {isPoint && <Connector anchorX={anchorX} yBottom={yBottom} yConnectTop={yTop + evH} color={ev.color} />}
-      <rect
-        x={displayX} y={yTop}
-        width={displayW} height={frameH}
-        rx={5}
+      {isPoint && <Connector anchorX={calloutCx} yBottom={yBottom} yConnectTop={yTop + evH + CALLOUT_H} color={ev.color} />}
+      <path
+        d={eventShapePath(displayX, yTop, displayW, evH, 5, calloutCx)}
         fill="rgba(0,0,0,0.0)"
         stroke={ev.color}
         strokeWidth={1.5}
+        strokeLinejoin="round"
         opacity={0.85}
         style={{ transition: 'opacity 0.1s' }}
       />
       <text
         x={textX}
         y={titleBaselineY}
+        dominantBaseline="central"
         textAnchor={textAnchor}
         fill={ev.color}
-        fontSize={11} fontWeight="600" fontFamily="inherit"
+        fontSize={FONT_SIZE} fontWeight="600" fontFamily="inherit"
         style={{ pointerEvents: 'none', userSelect: 'none' }}
       >
         {ev.title}
@@ -186,9 +213,10 @@ function EventItemOutline({ ev, geo }) {
         <text
           x={textX}
           y={notesBaselineY}
+          dominantBaseline="central"
           textAnchor={textAnchor}
           fill={ev.color}
-          fontSize={11} fontFamily="inherit"
+          fontSize={FONT_SIZE} fontFamily="inherit"
           opacity={0.65}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
@@ -206,8 +234,8 @@ function EventItemLabel({ ev, geo }) {
   const { anchorX, rectX, width, rangeEndX, yTop, yBottom, evH, isPoint } = geo;
   const align = ev.align ?? 'left';
   const lines = notesLines(ev);
-  const titleY = yTop + PAD + TEXT_ASCENT;
-  const notesY = titleY + NOTES_LINE_H;
+  const titleY = yTop + PAD_V + FONT_SIZE / 2;
+  const notesY = titleY + NOTES_GAP + NOTES_LINE_H / 2;
   const barY   = yTop + evH; // underline at bottom of event slot
 
   // Text position within the span
@@ -216,13 +244,13 @@ function EventItemLabel({ ev, geo }) {
     textX = anchorX + width / 2;
     textAnchor = 'middle';
   } else if (!isPoint && align === 'right') {
-    textX = rangeEndX - PAD;
+    textX = rangeEndX - PAD_H;
     textAnchor = 'end';
   } else if (align === 'right') {
-    textX = anchorX - PAD;
+    textX = anchorX - PAD_H;
     textAnchor = 'end';
   } else {
-    textX = anchorX + PAD;
+    textX = anchorX + PAD_H;
     textAnchor = 'start';
   }
 
@@ -249,8 +277,9 @@ function EventItemLabel({ ev, geo }) {
       <text
         x={textX} y={titleY}
         textAnchor={textAnchor}
+        dominantBaseline="central"
         fill={ev.color}
-        fontSize={11} fontWeight="600" fontFamily="inherit"
+        fontSize={FONT_SIZE} fontWeight="600" fontFamily="inherit"
         style={{ pointerEvents: 'none', userSelect: 'none' }}
       >
         {ev.title}
@@ -259,8 +288,9 @@ function EventItemLabel({ ev, geo }) {
         <text
           x={textX} y={notesY}
           textAnchor={textAnchor}
+          dominantBaseline="central"
           fill={ev.color}
-          fontSize={11} fontFamily="inherit"
+          fontSize={FONT_SIZE} fontFamily="inherit"
           opacity={0.65}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
