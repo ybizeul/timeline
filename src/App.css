@@ -19,3 +19,16 @@
 .timeline-resize-handle:active {
   background: var(--accent);
 }
+
+.app-version {
+  position: fixed;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}

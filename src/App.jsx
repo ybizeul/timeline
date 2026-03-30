@@ -140,6 +140,7 @@ export default function App() {
         onDelete={handleDelete}
         onClose={closeEditor}
       />
+      <span className="app-version">{__APP_VERSION__}</span>
     </div>
   );
 }
