@@ -10,7 +10,7 @@ const CALLOUT_EDGE_PAD = 12;  // min distance from anchorX to rect edge
 /** Canonical height for an event rect. */
 function calcEventHeight(numNoteLines) {
   if (numNoteLines === 0) return PAD_V + FONT_SIZE + PAD_V;
-  return PAD_V + FONT_SIZE + NOTES_GAP + (numNoteLines - 1) * NOTES_LINE_H + FONT_SIZE + PAD_V;
+  return PAD_V + FONT_SIZE + NOTES_GAP + NOTES_LINE_H / 2 + (numNoteLines - 1) * NOTES_LINE_H + PAD_V;
 }
 
 /** Split description into lines (empty array when notes are off or blank). */
@@ -254,18 +254,24 @@ function EventItemOutline({ ev, geo }) {
 }
 
 // ── Variant: label (text only + underline bar for ranged events) ──────────────
+const LABEL_LINE_GAP = 4; // vertical gap between text block and dashed connector
+const LABEL_H_GAP   = 6; // horizontal gap between anchor line and text block
+
 function EventItemLabel({ ev, geo }) {
   const { anchorX, rectX, width, rangeEndX, yTop, yBottom, evH, isPoint } = geo;
   const align = ev.align ?? 'left';
   const lines = notesLines(ev);
-  const titleY = yTop + PAD_V + FONT_SIZE / 2;
+  const textBlockTop = yTop - LABEL_LINE_GAP;
+  const titleY = textBlockTop + PAD_V + FONT_SIZE / 2;
   const notesY = titleY + NOTES_GAP + NOTES_LINE_H / 2;
   const barY   = yTop + evH; // underline at bottom of event slot
 
   // Text position within the span
   let textX, textAnchor;
   if (isPoint) {
-    ({ textX, textAnchor } = alignedText(rectX, width, align));
+    // Offset text to the right of the anchor line
+    const offsetX = rectX + LABEL_H_GAP;
+    ({ textX, textAnchor } = alignedText(offsetX, width, align));
   } else if (align === 'center') {
     textX = anchorX + (rangeEndX - anchorX) / 2;
     textAnchor = 'middle';
@@ -277,14 +283,32 @@ function EventItemLabel({ ev, geo }) {
     textAnchor = 'start';
   }
 
+  // Solid line covers the text area, dashed line extends below to the axis
+  const solidBottom = textBlockTop + evH;
+
   return (
     <>
       {isPoint ? (
-        <Connector
-          anchorX={anchorX} yBottom={yBottom}
-          yConnectTop={align === 'center' ? yTop + evH : yTop}
-          color={ev.color}
-        />
+        <>
+          {/* Solid line alongside the text block */}
+          <line
+            x1={anchorX} y1={textBlockTop}
+            x2={anchorX} y2={solidBottom}
+            stroke={ev.color}
+            strokeWidth={1.5}
+            opacity={0.5}
+          />
+          {/* Dashed line from below text to axis */}
+          <line
+            x1={anchorX} y1={solidBottom}
+            x2={anchorX} y2={yBottom}
+            stroke={ev.color}
+            strokeWidth={1.5}
+            strokeDasharray="3 3"
+            opacity={0.5}
+          />
+          <circle cx={anchorX} cy={yBottom + CONNECTOR_MARGIN} r={2.5} fill={ev.color} opacity={0.7} />
+        </>
       ) : (
         <>
           {/* Horizontal underline spanning the time range */}
@@ -297,7 +321,7 @@ function EventItemLabel({ ev, geo }) {
         </>
       )}
       {/* Invisible hit-area */}
-      <rect x={rectX} y={yTop} width={width} height={evH} fill="transparent" rx={4} />
+      <rect x={isPoint ? rectX + LABEL_H_GAP : rectX} y={textBlockTop} width={width} height={evH} fill="transparent" rx={4} />
       <text
         x={textX} y={titleY}
         textAnchor={textAnchor}

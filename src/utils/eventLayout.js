@@ -11,7 +11,7 @@ export const NOTES_LINE_H  = 14;
 function eventHeightPx(ev) {
   const n = (ev.showNotes && ev.description) ? ev.description.split('\n').length : 0;
   if (n === 0) return PAD_V + FONT_SIZE + PAD_V;
-  return PAD_V + FONT_SIZE + NOTES_GAP + (n - 1) * NOTES_LINE_H + FONT_SIZE + PAD_V;
+  return PAD_V + FONT_SIZE + NOTES_GAP + NOTES_LINE_H / 2 + (n - 1) * NOTES_LINE_H + PAD_V;
 }
 
 // Text width measurement using Canvas 2D — pixel-accurate
