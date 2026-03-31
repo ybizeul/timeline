@@ -1,5 +1,21 @@
 # Changelog
 
+## [v0.9.3]
+
+### Added
+- SVG export of the timeline
+- Save View / Restore View buttons to bookmark and recall a viewport position per timeline
+
+### Changed
+- Same-color events are grouped on the same lane when possible
+- Simplified button labels in controls (removed icons)
+- Browser window resize preserves current zoom level
+- Viewport position reliably persisted and restored per timeline across reloads
+
+### Fixed
+- Viewport no longer corrupted when switching timelines (old viewport was written to new timeline's storage)
+- Page reload no longer compresses/shifts timeline (initial SVG width mismatch)
+
 ## [v0.9.2] - 2026-03-31
 
 ### Changed
