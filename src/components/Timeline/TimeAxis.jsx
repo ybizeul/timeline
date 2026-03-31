@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getScaleTicks, getWeekendRanges, tToX, tickRank, cullTicks } from '../../utils/timeScale';
+import { getScaleTicks, getWeekendRanges, tToX, cullTicks } from '../../utils/timeScale';
 
 export const LABEL_STRIP_H = 52; // height of the label zone below the axis
 
@@ -7,18 +7,14 @@ const MAJOR_TICK_H = 10;
 const MINOR_TICK_H = 5;
 
 // Minimum pixel gap between consecutive visible labels
-const MAJOR_MIN_PX = 90;
 const MINOR_MIN_PX = 52;
-
-// Approximate character width for overlap culling
-const MAJOR_CH_PX = 7;  // 11px font
 const MINOR_CH_PX = 6;  // 10px font
 
 export function TimeAxis({ viewStart, viewEnd, svgWidth, axisY, showWeekends }) {
   const minorRowY = axisY + MINOR_TICK_H + 12;
   const majorRowY = axisY + MAJOR_TICK_H + 32;
 
-  const { majorTicks, minorTicks, level, minorLevel } = useMemo(
+  const { majorTicks, minorTicks, subMinorTicks, level, minorLevel } = useMemo(
     () => getScaleTicks(viewStart, viewEnd, svgWidth),
     [viewStart, viewEnd, svgWidth]
   );
@@ -30,16 +26,37 @@ export function TimeAxis({ viewStart, viewEnd, svgWidth, axisY, showWeekends }) 
     [viewStart, viewEnd, level, showWeekends]
   );
 
-  const majors = useMemo(
-    () => cullTicks(majorTicks, toX, MAJOR_MIN_PX, MAJOR_CH_PX, level),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [majorTicks, svgWidth, level]
-  );
   const minors = useMemo(
     () => cullTicks(minorTicks, toX, MINOR_MIN_PX, MINOR_CH_PX, minorLevel),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [minorTicks, svgWidth, minorLevel]
   );
+
+  const majorSpans = useMemo(() => {
+    const MIN_SPAN_PX = 150;
+    // Position all ticks, then filter to ensure minimum spacing
+    const all = majorTicks.map(tick => ({ ...tick, x: tToX(tick.t, viewStart, viewEnd, svgWidth) }));
+    const filtered = [];
+    const skippedCounts = [];  // how many ticks were skipped before each filtered tick
+    let skipped = 0;
+    for (const tick of all) {
+      if (filtered.length === 0 || tick.x - filtered[filtered.length - 1].x >= MIN_SPAN_PX) {
+        filtered.push(tick);
+        skippedCounts.push(skipped);
+        skipped = 0;
+      } else {
+        skipped++;
+      }
+    }
+    return filtered.map((tick, i) => {
+      const x1 = tick.x;
+      const x2 = i < filtered.length - 1 ? filtered[i + 1].x : svgWidth + 50;
+      // pure = no intermediate ticks were dropped, label accurately describes the span
+      const pure = i < filtered.length - 1 ? skippedCounts[i + 1] === 0 : true;
+      return { x1, x2, label: tick.label, pure };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [majorTicks, viewStart, viewEnd, svgWidth]);
 
   return (
     <g className="time-axis">
@@ -65,11 +82,11 @@ export function TimeAxis({ viewStart, viewEnd, svgWidth, axisY, showWeekends }) 
       })}
 
       {/* Separator lines at major ticks — extend upward into the event space */}
-      {majors.map(({ t, x, showTick }) => (
-        showTick && x >= 0 && x <= svgWidth && (
+      {majorSpans.map(({ x1 }, i) => (
+        x1 >= 0 && x1 <= svgWidth && (
           <line
-            key={`sep-${t}`}
-            x1={x} y1={0} x2={x} y2={axisY}
+            key={`sep-${i}`}
+            x1={x1} y1={0} x2={x1} y2={axisY}
             stroke="var(--border)"
             strokeWidth={1}
             opacity={0.45}
@@ -83,6 +100,26 @@ export function TimeAxis({ viewStart, viewEnd, svgWidth, axisY, showWeekends }) 
         stroke="var(--axis)"
         strokeWidth={1.5}
       />
+
+      {/* ── Sub-minor ticks (unlabeled hourly marks) ─────────────── */}
+      {subMinorTicks.length > 0 && (() => {
+        const minGap = 4;
+        const pxPerHour = (svgWidth / (viewEnd - viewStart)) * 3_600_000;
+        if (pxPerHour < minGap) return null;
+        return subMinorTicks.map(({ t }) => {
+          const x = toX(t);
+          if (x < -1 || x > svgWidth + 1) return null;
+          return (
+            <line
+              key={`sub-${t}`}
+              x1={x} y1={axisY}
+              x2={x} y2={axisY + 3}
+              stroke="var(--tick)"
+              strokeWidth={1}
+            />
+          );
+        });
+      })()}
 
       {/* ── Minor ticks + labels ──────────────────────────────────── */}
       {minors.map(({ t, x, label, showLabel, showTick }) => {
@@ -113,43 +150,36 @@ export function TimeAxis({ viewStart, viewEnd, svgWidth, axisY, showWeekends }) 
         );
       })}
 
-      {/* ── Major ticks + labels ──────────────────────────────────── */}
-      {majors.map(({ t, x, label, showLabel, showTick }) => {
-        if (x < -1 || x > svgWidth + 1) return null;
-        if (!showTick && !showLabel) return null;
-        const pillW = label.length * MAJOR_CH_PX + 14;
+      {/* ── Major ticks + bracket labels ─────────────────────────── */}
+      {majorSpans.map(({ x1, x2, label, pure }, i) => {
+        const bracketY = axisY + 28;
+        const curveH = 7;
+        const curveR = Math.min(7, (x2 - x1) / 4);
+        const visibleX1 = Math.max(0, x1);
+        const visibleX2 = Math.min(svgWidth, x2);
+        const midX = (visibleX1 + visibleX2) / 2;
+        if (visibleX2 - visibleX1 < 20) return null;
         return (
-          <g key={t}>
-            {showTick && (
-              <line
-                x1={x} y1={axisY}
-                x2={x} y2={axisY + MAJOR_TICK_H}
-                stroke="var(--tick)"
-                strokeWidth={1.5}
+          <g key={`maj-${i}`}>
+            {pure && (
+              <path
+                d={`M ${x1},${bracketY - curveH} Q ${x1},${bracketY} ${x1 + curveR},${bracketY} L ${x2 - curveR},${bracketY} Q ${x2},${bracketY} ${x2},${bracketY - curveH}`}
+                fill="none"
+                stroke="var(--border)"
+                strokeWidth={1}
               />
             )}
-            {showLabel && (
-              <>
-                <rect
-                  x={x + 4}
-                  y={majorRowY - 12}
-                  width={pillW}
-                  height={16}
-                  rx={4}
-                  fill="var(--surface-el)"
-                />
-                <text
-                  x={x + 11}
-                  y={majorRowY}
-                  fill="var(--text)"
-                  fontSize={11}
-                  fontWeight="600"
-                  fontFamily="inherit"
-                >
-                  {label}
-                </text>
-              </>
-            )}
+            <text
+              x={midX}
+              y={majorRowY}
+              textAnchor="middle"
+              fill="var(--text)"
+              fontSize={11}
+              fontWeight="600"
+              fontFamily="inherit"
+            >
+              {label}
+            </text>
           </g>
         );
       })}
