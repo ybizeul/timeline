@@ -1,5 +1,10 @@
 # Changelog
 
+## [unrelease]
+
+### Added
+- Improved timeline scale
+
 ## [v0.9.3]
 
 ### Added
