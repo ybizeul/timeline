@@ -84,14 +84,22 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
     return { ev, start, end: rawEnd, leftPx, rightPx, heightPx: heightPx + strokeMargin * 2 };
   });
 
-  // Sort by left edge (left-to-right placement)
-  items.sort((a, b) => a.leftPx - b.leftPx);
+  // Sort by color then left edge so same-color events are processed together,
+  // increasing their chance of landing on the same y-level.
+  items.sort((a, b) => {
+    const ca = a.ev.color ?? '';
+    const cb = b.ev.color ?? '';
+    if (ca < cb) return -1;
+    if (ca > cb) return  1;
+    return a.leftPx - b.leftPx;
+  });
 
   // Greedy 2D placement: for each event, find the lowest yOffset where
   // its bounding box doesn't overlap any already-placed event.
   // yOffset = distance from the axis baseline to the TOP of the event rect.
   // Event occupies vertical span [yOffset - heightPx, yOffset] (in upward coords).
   const placed = []; // { leftPx, rightPx, yBase, yTop } — yBase = bottom, yTop = top (upward coords)
+  const colorYBases = new Map(); // color → Set<yBase> — tracks y-levels used by each color
 
   const result = items.map(item => {
     // Find all placed events that horizontally overlap (with gap)
@@ -99,22 +107,33 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
       p.leftPx < item.rightPx + GAP_X && p.rightPx + GAP_X > item.leftPx
     );
 
-    // Try to place at the lowest possible position (closest to axis)
-    // The lowest position is: yBase = GAP_Y, yTop = GAP_Y + heightPx
-    // Check all conflicting events and find the lowest gap that fits.
-
     // Collect the vertical intervals that are occupied
     // Sort conflicts by yBase so we can find gaps bottom-to-top
     hConflicts.sort((a, b) => a.yBase - b.yBase);
 
-    let yBase = GAP_Y; // start trying from the bottom
-
+    // Enumerate all valid (non-overlapping) candidate y-positions
+    const candidates = [];
+    let tryBase = GAP_Y;
     for (const c of hConflicts) {
-      // If our proposed box [yBase, yBase + heightPx] overlaps with c [c.yBase, c.yTop]
-      const myTop = yBase + item.heightPx;
-      if (myTop + GAP_Y > c.yBase && yBase < c.yTop + GAP_Y) {
-        // Overlap — push above this conflict
-        yBase = c.yTop + GAP_Y;
+      const myTop = tryBase + item.heightPx;
+      if (myTop + GAP_Y > c.yBase && tryBase < c.yTop + GAP_Y) {
+        // Gap before this conflict is too small — record it as a candidate
+        // only if we haven't been pushed past it already
+        if (tryBase + item.heightPx + GAP_Y <= c.yBase) {
+          candidates.push(tryBase);
+        }
+        tryBase = c.yTop + GAP_Y;
+      }
+    }
+    candidates.push(tryBase); // position above all conflicts is always valid
+
+    // Prefer a candidate y-position already used by the same color
+    const color = item.ev.color ?? '';
+    const usedByColor = colorYBases.get(color);
+    let yBase = candidates[0]; // default: lowest valid position
+    if (usedByColor) {
+      for (const c of candidates) {
+        if (usedByColor.has(c)) { yBase = c; break; }
       }
     }
 
@@ -122,9 +141,69 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
     const yOffset = yTop; // distance from axis to top of event
 
     placed.push({ leftPx: item.leftPx, rightPx: item.rightPx, yBase, yTop });
+    if (!colorYBases.has(color)) colorYBases.set(color, new Set());
+    colorYBases.get(color).add(yBase);
 
     return { ev: item.ev, start: item.start, end: item.end, yOffset };
   });
+
+  // === Second pass: readjust lanes for better color grouping ===
+  // After the first greedy pass, some events may be isolated from their
+  // color group (e.g. the first event of a color was placed before others
+  // established a preferred lane).  Try to relocate them.
+
+  // Build color → yBase → count of events at that lane
+  const colorLaneCounts = new Map();
+  for (let i = 0; i < placed.length; i++) {
+    const color = items[i].ev.color ?? '';
+    if (!colorLaneCounts.has(color)) colorLaneCounts.set(color, new Map());
+    const lanes = colorLaneCounts.get(color);
+    lanes.set(placed[i].yBase, (lanes.get(placed[i].yBase) || 0) + 1);
+  }
+
+  for (let i = 0; i < placed.length; i++) {
+    const color = items[i].ev.color ?? '';
+    const lanes = colorLaneCounts.get(color);
+    if (!lanes || lanes.size <= 1) continue; // only one lane for this color
+
+    const currentCount = lanes.get(placed[i].yBase) || 0;
+
+    // Candidate lanes for this color, sorted by event count descending
+    const candidates = [...lanes.entries()]
+      .filter(([yb]) => yb !== placed[i].yBase)
+      .sort((a, b) => b[1] - a[1]);
+
+    for (const [candidateBase, candidateCount] of candidates) {
+      // Only move if the target lane has at least as many same-color
+      // events as my current lane (including me) — net positive move
+      if (candidateCount < currentCount) break;
+
+      const candidateTop = candidateBase + items[i].heightPx;
+
+      // Check for overlaps with other placed events (excluding self)
+      const overlaps = placed.some((p, j) =>
+        j !== i &&
+        p.leftPx < placed[i].rightPx + GAP_X &&
+        p.rightPx + GAP_X > placed[i].leftPx &&
+        candidateBase < p.yTop + GAP_Y &&
+        candidateTop + GAP_Y > p.yBase
+      );
+
+      if (!overlaps) {
+        // Update lane counts
+        const oldBase = placed[i].yBase;
+        lanes.set(oldBase, (lanes.get(oldBase) || 1) - 1);
+        if (lanes.get(oldBase) === 0) lanes.delete(oldBase);
+        lanes.set(candidateBase, (lanes.get(candidateBase) || 0) + 1);
+
+        // Move the event
+        placed[i].yBase = candidateBase;
+        placed[i].yTop = candidateTop;
+        result[i].yOffset = candidateTop;
+        break;
+      }
+    }
+  }
 
   return result;
 }
