@@ -4,7 +4,7 @@ A local, browser-based timeline app inspired by [time.graphics](https://time.gra
 
 ![Screenshot](screenshot.png)
 
-You can test it on [https://ybizeul.github.io/timeline/](https://ybizeul.github.io/timeline/).
+You can test it on [https://timeline.tynsoe.org](https://timeline.tynsoe.org).
 
 ## Features
 
