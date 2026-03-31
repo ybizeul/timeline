@@ -256,6 +256,7 @@ function EventItemOutline({ ev, geo }) {
 // ── Variant: label (text only + underline bar for ranged events) ──────────────
 const LABEL_LINE_GAP = 4; // vertical gap between text block and dashed connector
 const LABEL_H_GAP   = 6; // horizontal gap between anchor line and text block
+const LABEL_BAR_GAP = 5; // vertical gap between text bottom and underline bar (range events)
 
 function EventItemLabel({ ev, geo }) {
   const { anchorX, rectX, width, rangeEndX, yTop, yBottom, evH, isPoint } = geo;
@@ -264,7 +265,10 @@ function EventItemLabel({ ev, geo }) {
   const textBlockTop = yTop - LABEL_LINE_GAP;
   const titleY = textBlockTop + PAD_V + FONT_SIZE / 2;
   const notesY = titleY + NOTES_GAP + NOTES_LINE_H / 2;
-  const barY   = yTop + evH; // underline at bottom of event slot
+  const textBottom = lines.length > 0
+    ? notesY + (lines.length - 1) * NOTES_LINE_H + FONT_SIZE / 2
+    : titleY + FONT_SIZE / 2;
+  const barY   = isPoint ? yTop + evH : textBottom + LABEL_BAR_GAP;
 
   // Solid line covers the text area, dashed line extends below to the axis
   const solidBottom = textBlockTop + evH;
@@ -347,7 +351,7 @@ function EventItemLabel({ ev, geo }) {
             x2={rangeEndX} y2={barY}
             stroke={ev.color} strokeWidth={2} opacity={0.7}
           />
-          <RangeBrackets x1={anchorX} x2={rangeEndX} yTop={yTop} height={evH} color={ev.color} opacity={0.45} />
+          <RangeBrackets x1={anchorX} x2={rangeEndX} yTop={yTop} height={barY - yTop} color={ev.color} opacity={0.45} />
         </>
       )}
       {/* Invisible hit-area */}
