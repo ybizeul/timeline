@@ -71,14 +71,14 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
           onClick={onToggleToday}
           title={showToday ? 'Hide today marker' : 'Show today marker'}
         >
-          <span className="ctrl-btn__icon">{showToday ? '⊘' : '⊕'}</span> today
+          today
         </button>
         <button
           className={`ctrl-btn ctrl-btn--text ctrl-btn--toggle${showWeekends ? ' is-active' : ''}`}
           onClick={onToggleWeekends}
           title={showWeekends ? 'Hide weekend highlights' : 'Show weekend highlights'}
         >
-          <span className="ctrl-btn__icon">{showWeekends ? '⊘' : '⊕'}</span> weekends
+          weekends
         </button>
       </div>
 
@@ -98,13 +98,13 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
               className={`controls__overflow-item${showToday ? ' is-active' : ''}`}
               onClick={() => { onToggleToday(); }}
             >
-              {showToday ? '⊘ Today marker' : '⊕ Today marker'}
+              Today marker
             </button>
             <button
               className={`controls__overflow-item${showWeekends ? ' is-active' : ''}`}
               onClick={() => { onToggleWeekends(); }}
             >
-              {showWeekends ? '⊘ Weekends' : '⊕ Weekends'}
+              Weekends
             </button>
           </div>
         )}
