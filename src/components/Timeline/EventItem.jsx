@@ -95,7 +95,7 @@ export function useEventGeometry(layoutItem, viewStart, viewEnd, svgWidth, axisY
 }
 
 // ── Shared connector (dot + dashed line) ─────────────────────────────────────
-function Connector({ anchorX, yTop, yBottom, yConnectTop, color }) {
+function Connector({ anchorX, yBottom, yConnectTop, color }) {
   return (
     <>
       <line
