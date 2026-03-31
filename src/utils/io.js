@@ -18,9 +18,12 @@ export function exportTimeline(activeId) {
   const viewportRaw = localStorage.getItem(`timeline-viewport-${activeId}`);
   const viewport = viewportRaw ? JSON.parse(viewportRaw) : null;
 
+  const savedPosRaw = localStorage.getItem(`timeline-savedpos-${activeId}`);
+  const savedPosition = savedPosRaw ? JSON.parse(savedPosRaw) : null;
+
   const data = {
     version: 1,
-    timeline: { name, events, viewport },
+    timeline: { name, events, viewport, savedPosition },
   };
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -80,5 +83,14 @@ export async function parseTimelineFile(file) {
     }
   }
 
-  return { name: timeline.name.trim(), events, viewport };
+  // Saved position is optional
+  let savedPosition = null;
+  if (timeline.savedPosition && typeof timeline.savedPosition === 'object') {
+    const { viewStart, viewEnd } = timeline.savedPosition;
+    if (Number.isFinite(viewStart) && Number.isFinite(viewEnd) && viewEnd > viewStart) {
+      savedPosition = { viewStart, viewEnd };
+    }
+  }
+
+  return { name: timeline.name.trim(), events, viewport, savedPosition };
 }

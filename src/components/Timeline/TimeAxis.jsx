@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getScaleTicks, getWeekendRanges, tToX, tickRank } from '../../utils/timeScale';
+import { getScaleTicks, getWeekendRanges, tToX, tickRank, cullTicks } from '../../utils/timeScale';
 
 export const LABEL_STRIP_H = 52; // height of the label zone below the axis
 
@@ -10,46 +10,9 @@ const MINOR_TICK_H = 5;
 const MAJOR_MIN_PX = 90;
 const MINOR_MIN_PX = 52;
 
-// Minimum pixel gap between tick lines (to avoid a wall of lines)
-const TICK_MIN_PX = 18;
-
 // Approximate character width for overlap culling
 const MAJOR_CH_PX = 7;  // 11px font
 const MINOR_CH_PX = 6;  // 10px font
-
-/** Stride-based culling: show every Nth tick, anchored by absolute rank so labels stay fixed on scroll. */
-function cull(ticks, toX, minPx, chPx, intervalId) {
-  if (ticks.length === 0) return [];
-  if (ticks.length === 1) {
-    return [{ ...ticks[0], x: toX(ticks[0].t), showLabel: true, showTick: true }];
-  }
-
-  // Average pixel spacing between consecutive ticks
-  const firstX = toX(ticks[0].t);
-  const lastX = toX(ticks[ticks.length - 1].t);
-  const avgSpacingPx = Math.abs(lastX - firstX) / (ticks.length - 1);
-
-  if (avgSpacingPx < 1) {
-    return ticks.map(tick => ({ ...tick, x: toX(tick.t), showLabel: false, showTick: false }));
-  }
-
-  // Compute stride from the widest label + required gap
-  const maxLabelLen = Math.max(...ticks.map(t => t.label.length));
-  const labelW = maxLabelLen * chPx + 10;
-  const labelStride = Math.max(1, Math.ceil((labelW + minPx) / avgSpacingPx));
-  const tickStride  = Math.max(1, Math.ceil(TICK_MIN_PX / avgSpacingPx));
-
-  return ticks.map(tick => {
-    const x = toX(tick.t);
-    const rank = tickRank(tick.t, intervalId);
-    return {
-      ...tick,
-      x,
-      showLabel: rank % labelStride === 0,
-      showTick:  rank % tickStride === 0,
-    };
-  });
-}
 
 export function TimeAxis({ viewStart, viewEnd, svgWidth, axisY, showWeekends }) {
   const minorRowY = axisY + MINOR_TICK_H + 12;
@@ -68,12 +31,12 @@ export function TimeAxis({ viewStart, viewEnd, svgWidth, axisY, showWeekends }) 
   );
 
   const majors = useMemo(
-    () => cull(majorTicks, toX, MAJOR_MIN_PX, MAJOR_CH_PX, level),
+    () => cullTicks(majorTicks, toX, MAJOR_MIN_PX, MAJOR_CH_PX, level),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [majorTicks, svgWidth, level]
   );
   const minors = useMemo(
-    () => cull(minorTicks, toX, MINOR_MIN_PX, MINOR_CH_PX, minorLevel),
+    () => cullTicks(minorTicks, toX, MINOR_MIN_PX, MINOR_CH_PX, minorLevel),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [minorTicks, svgWidth, minorLevel]
   );

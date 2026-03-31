@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { exportTimeline } from '../../utils/io';
 import './TimelineMenu.css';
 
-export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, onDelete, onImport }) {
+export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, onDelete, onImport, onExportSvg, hasEvents }) {
   const [isOpen, setIsOpen]     = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -119,6 +119,14 @@ export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, o
               onClick={() => { exportTimeline(activeId); setIsOpen(false); }}
             >
               Export
+            </button>
+            <button
+              className="tl-menu__io-btn"
+              disabled={!hasEvents}
+              onClick={() => { onExportSvg(); setIsOpen(false); }}
+              title={hasEvents ? 'Export timeline as SVG image' : 'No events to export'}
+            >
+              Export SVG
             </button>
             <button
               className="tl-menu__io-btn"

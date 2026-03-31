@@ -5,6 +5,7 @@ import { EventEditor } from './components/EventEditor/EventEditor';
 import { useViewport } from './hooks/useViewport';
 import { useEvents } from './hooks/useEvents';
 import { useTimelines } from './hooks/useTimelines';
+import { exportTimelineSvg } from './utils/exportSvg';
 import './App.css';
 
 const MIN_TL_HEIGHT = 100;
@@ -16,6 +17,7 @@ export default function App() {
   const {
     viewport,
     setSvgWidth,
+    svgWidthRef,
     zoomAt,
     panBy,
     zoomIn,
@@ -23,6 +25,9 @@ export default function App() {
     scrollLeft,
     scrollRight,
     goToday,
+    savePosition,
+    recallPosition,
+    hasSavedPosition,
   } = useViewport(activeId);
 
   const { events, addEvent, updateEvent, deleteEvent } = useEvents(activeId);
@@ -98,6 +103,19 @@ export default function App() {
     closeEditor();
   }, [deleteEvent, closeEditor]);
 
+  const activeName = timelines.find(t => t.id === activeId)?.name ?? 'Timeline';
+
+  const handleExportSvg = useCallback(() => {
+    exportTimelineSvg({
+      events,
+      viewport,
+      svgWidth: svgWidthRef.current,
+      timelineName: activeName,
+      showToday,
+      showWeekends,
+    });
+  }, [events, viewport, svgWidthRef, activeName, showToday, showWeekends]);
+
   return (
     <div className="app">
       <Controls
@@ -119,6 +137,11 @@ export default function App() {
         onRenameTimeline={renameTimeline}
         onDeleteTimeline={deleteTimeline}
         onImportTimeline={importTimeline}
+        onExportSvg={handleExportSvg}
+        hasEvents={events.length > 0}
+        onSavePosition={savePosition}
+        onRecallPosition={recallPosition}
+        hasSavedPosition={hasSavedPosition}
       />
       <Timeline
         viewport={viewport}

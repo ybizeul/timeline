@@ -24,7 +24,9 @@ function formatPeriod(viewStart, viewEnd) {
 export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScrollRight, onToday, onAddEvent,
   showToday, onToggleToday,
   showWeekends, onToggleWeekends,
-  timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline, onImportTimeline }) {
+  timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline, onImportTimeline,
+  onExportSvg, hasEvents,
+  onSavePosition, onRecallPosition, hasSavedPosition }) {
   const { viewStart, viewEnd } = viewport;
   const periodLabel = useMemo(() => formatPeriod(viewStart, viewEnd), [viewStart, viewEnd]);
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -49,6 +51,8 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
         onRename={onRenameTimeline}
         onDelete={onDeleteTimeline}
         onImport={onImportTimeline}
+        onExportSvg={onExportSvg}
+        hasEvents={hasEvents}
       />
       <div className="controls__sep" />
 
@@ -63,6 +67,13 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
       <button className="ctrl-btn" onClick={onZoomOut} title="Zoom out">−</button>
       <div className="controls__sep" />
       <button className="ctrl-btn ctrl-btn--text" onClick={onToday} title="Go to today">Today</button>
+      <div className="controls__sep" />
+      <div className="controls__secondary">
+        <div className="ctrl-btn-group">
+          <button className="ctrl-btn ctrl-btn--text" onClick={onSavePosition} title="Save current view position">Save View</button>
+          <button className="ctrl-btn ctrl-btn--text" onClick={onRecallPosition} title="Restore saved view position" disabled={!hasSavedPosition}>Restore View</button>
+        </div>
+      </div>
 
       {/* Toggle controls — hidden on mobile, in overflow menu */}
       <div className="controls__secondary">
@@ -106,6 +117,9 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
             >
               Weekends
             </button>
+            <div className="controls__overflow-divider" />
+            <button className="controls__overflow-item" onClick={() => { onSavePosition(); }}>Save View</button>
+            <button className="controls__overflow-item" onClick={() => { onRecallPosition(); }} disabled={!hasSavedPosition}>Restore View</button>
           </div>
         )}
       </div>

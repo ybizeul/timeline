@@ -190,3 +190,37 @@ export function tickRank(t, intervalId) {
     default: return 0;
   }
 }
+
+// ── Tick culling (stride-based, viewport-independent) ───────────────────────
+const TICK_MIN_PX = 18;
+
+export function cullTicks(ticks, toX, minPx, chPx, intervalId) {
+  if (ticks.length === 0) return [];
+  if (ticks.length === 1) {
+    return [{ ...ticks[0], x: toX(ticks[0].t), showLabel: true, showTick: true }];
+  }
+
+  const firstX = toX(ticks[0].t);
+  const lastX = toX(ticks[ticks.length - 1].t);
+  const avgSpacingPx = Math.abs(lastX - firstX) / (ticks.length - 1);
+
+  if (avgSpacingPx < 1) {
+    return ticks.map(tick => ({ ...tick, x: toX(tick.t), showLabel: false, showTick: false }));
+  }
+
+  const maxLabelLen = Math.max(...ticks.map(t => t.label.length));
+  const labelW = maxLabelLen * chPx + 10;
+  const labelStride = Math.max(1, Math.ceil((labelW + minPx) / avgSpacingPx));
+  const tickStride  = Math.max(1, Math.ceil(TICK_MIN_PX / avgSpacingPx));
+
+  return ticks.map(tick => {
+    const x = toX(tick.t);
+    const rank = tickRank(tick.t, intervalId);
+    return {
+      ...tick,
+      x,
+      showLabel: rank % labelStride === 0,
+      showTick:  rank % tickStride === 0,
+    };
+  });
+}

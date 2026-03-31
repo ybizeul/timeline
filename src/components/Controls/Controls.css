@@ -88,6 +88,27 @@
   text-align: center;
 }
 
+/* ── Button group ───────────────────────────────────── */
+.ctrl-btn-group {
+  display: flex;
+}
+
+.ctrl-btn-group .ctrl-btn {
+  border-radius: 0;
+}
+
+.ctrl-btn-group .ctrl-btn:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.ctrl-btn-group .ctrl-btn:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.ctrl-btn-group .ctrl-btn + .ctrl-btn {
+  border-left: none;
+}
+
 /* ── Secondary group (inline on desktop) ────────────── */
 .controls__secondary {
   display: contents;
