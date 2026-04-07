@@ -47,7 +47,13 @@ function renderCardSvg(person, x, y, colors) {
   svg += `<defs>`;
   svg += `<clipPath id="card-clip-${esc(person.id)}"><rect width="${CARD_W}" height="${CARD_H}" rx="${RADIUS}" ry="${RADIUS}"/></clipPath>`;
   if (hasPhoto) {
-    svg += `<clipPath id="photo-clip-${esc(person.id)}"><circle cx="${PHOTO_PAD + PHOTO_SIZE / 2}" cy="${CARD_H / 2}" r="${PHOTO_SIZE / 2}"/></clipPath>`;
+    // Use pattern fill for Office compatibility (clip-path on <image> is poorly supported)
+    const photoCx = PHOTO_PAD + PHOTO_SIZE / 2;
+    const photoCy = CARD_H / 2;
+    const photoR = PHOTO_SIZE / 2;
+    svg += `<pattern id="photo-pat-${esc(person.id)}" patternUnits="objectBoundingBox" width="1" height="1">`;
+    svg += `<image xlink:href="${person.photo}" width="${PHOTO_SIZE}" height="${PHOTO_SIZE}" preserveAspectRatio="xMidYMid meet"/>`;
+    svg += `</pattern>`;
   }
   svg += `</defs>`;
 
@@ -57,10 +63,13 @@ function renderCardSvg(person, x, y, colors) {
   // Top accent bar
   svg += `<rect x="0" y="0" width="${CARD_W}" height="3.5" fill="${esc(color)}" clip-path="url(#card-clip-${esc(person.id)})"/>`;
 
-  // Photo
+  // Photo — circle filled with pattern for Office compatibility
   if (hasPhoto) {
-    svg += `<image href="${person.photo}" x="${PHOTO_PAD}" y="${(CARD_H - PHOTO_SIZE) / 2}" width="${PHOTO_SIZE}" height="${PHOTO_SIZE}" clip-path="url(#photo-clip-${esc(person.id)})" preserveAspectRatio="xMidYMid meet"/>`;
-    svg += `<circle cx="${PHOTO_PAD + PHOTO_SIZE / 2}" cy="${CARD_H / 2}" r="${PHOTO_SIZE / 2}" fill="none" stroke="${borderColor}" stroke-width="1"/>`;
+    const photoCx = PHOTO_PAD + PHOTO_SIZE / 2;
+    const photoCy = CARD_H / 2;
+    const photoR = PHOTO_SIZE / 2;
+    svg += `<circle cx="${photoCx}" cy="${photoCy}" r="${photoR}" fill="url(#photo-pat-${esc(person.id)})"/>`;
+    svg += `<circle cx="${photoCx}" cy="${photoCy}" r="${photoR}" fill="none" stroke="${borderColor}" stroke-width="1"/>`;
   }
 
   // Name
@@ -146,7 +155,7 @@ function buildOrgChartSvgString(people, focusedPersonId, collapsedIds, groups) {
   const offsetX = -expMinX + PADDING;
   const offsetY = -expMinY + PADDING;
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">`;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${svgW}pt" height="${svgH}pt" viewBox="0 0 ${svgW} ${svgH}">`;
   svg += `<style>text { font-family: ${FONT_FAMILY}; }</style>`;
   svg += `<rect width="${svgW}" height="${svgH}" fill="${esc(colors.bg)}"/>`;
   svg += `<g transform="translate(${offsetX}, ${offsetY})">`;

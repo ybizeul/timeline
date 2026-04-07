@@ -65,6 +65,7 @@ export function useOrgCharts() {
 
   const deleteChart = useCallback((id) => {
     localStorage.removeItem(`orgchart_people_${id}`);
+    localStorage.removeItem(`orgchart_groups_${id}`);
     localStorage.removeItem(`orgchart-viewport-${id}`);
     setCharts(prev => {
       const filtered = prev.filter(c => c.id !== id);
@@ -78,7 +79,7 @@ export function useOrgCharts() {
 
   const importChart = useCallback(async (file) => {
     const { parseOrgChartFile } = await import('../utils/orgChartIo');
-    const { name, people, viewport } = await parseOrgChartFile(file);
+    const { name, people, groups, viewport } = await parseOrgChartFile(file);
     const id = crypto.randomUUID();
     const newChart = { id, name };
     setCharts(prev => {
@@ -88,6 +89,7 @@ export function useOrgCharts() {
     });
     try {
       localStorage.setItem(`orgchart_people_${id}`, JSON.stringify(people));
+      if (groups && groups.length > 0) localStorage.setItem(`orgchart_groups_${id}`, JSON.stringify(groups));
       if (viewport) localStorage.setItem(`orgchart-viewport-${id}`, JSON.stringify(viewport));
     } catch { /* ignore */ }
     setActiveId(id);

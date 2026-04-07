@@ -15,12 +15,15 @@ export function exportOrgChart(activeId) {
   const peopleRaw = localStorage.getItem(`orgchart_people_${activeId}`);
   const people = peopleRaw ? JSON.parse(peopleRaw) : [];
 
+  const groupsRaw = localStorage.getItem(`orgchart_groups_${activeId}`);
+  const groups = groupsRaw ? JSON.parse(groupsRaw) : [];
+
   const viewportRaw = localStorage.getItem(`orgchart-viewport-${activeId}`);
   const viewport = viewportRaw ? JSON.parse(viewportRaw) : null;
 
   const data = {
     version: 1,
-    orgChart: { name, people, viewport },
+    orgChart: { name, people, groups, viewport },
   };
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -105,9 +108,26 @@ export async function parseOrgChartFile(file) {
     }
   }
 
+  // Validate groups
+  const validGroups = [];
+  if (Array.isArray(orgChart.groups)) {
+    for (const raw of orgChart.groups) {
+      if (!raw || typeof raw !== 'object') continue;
+      if (!Array.isArray(raw.personIds) || raw.personIds.length < 2) continue;
+      const personIds = raw.personIds.filter(pid => idSet.has(pid));
+      if (personIds.length < 2) continue;
+      validGroups.push({
+        id: raw.id || crypto.randomUUID(),
+        personIds,
+        label: (typeof raw.label === 'string' && raw.label) ? raw.label : 'Group',
+      });
+    }
+  }
+
   return {
     name: orgChart.name,
     people: validPeople,
+    groups: validGroups,
     viewport: orgChart.viewport || null,
   };
 }
