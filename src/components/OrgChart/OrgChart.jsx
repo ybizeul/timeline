@@ -158,11 +158,19 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
 
   const focusedPerson = focusedPersonId ? people.find(p => p.id === focusedPersonId) : null;
 
+  const handleBackgroundClick = useCallback((e) => {
+    // Only clear if click was directly on the SVG/wrapper (not a card) and not a drag
+    if (!dragRef.current?.moved && selectedIds.size > 0) {
+      setSelectedIds(new Set());
+    }
+  }, [selectedIds.size]);
+
   return (
     <div
       className="orgchart-wrapper"
       ref={wrapperRef}
       onPointerDown={handlePointerDown}
+      onClick={handleBackgroundClick}
     >
       {people.length === 0 && (
         <div className="orgchart-empty">
