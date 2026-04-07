@@ -119,15 +119,24 @@ export function PersonCard({ person, x, y, onClick, onDoubleClick, hasChildren, 
 
       {/* Role */}
       {person.role && (
-        <text
+        <foreignObject
           x={textStartX}
-          y={hasPhoto ? 44 : 40}
-          fill="var(--text-muted)"
-          fontSize="10"
-          fontFamily="Inter, system-ui, sans-serif"
+          y={hasPhoto ? 34 : 30}
+          width={textAvailW}
+          height={16}
         >
-          {truncate(person.role, Math.floor(textAvailW / CHAR_W_10))}
-        </text>
+          <div style={{
+            color: 'var(--text-muted)',
+            fontSize: 10,
+            fontFamily: 'Inter, system-ui, sans-serif',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: '16px',
+          }}>
+            {person.role}
+          </div>
+        </foreignObject>
       )}
 
       {/* Company / Organization */}

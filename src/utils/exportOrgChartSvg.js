@@ -85,11 +85,13 @@ function renderCardSvg(person, x, y, colors) {
   const nameMaxChars = Math.floor(textAvailW / CHAR_W_12);
   svg += `<text x="${textStartX}" y="${nameY}" fill="${esc(colors.text)}" font-size="12" font-weight="600" font-family="${FONT_FAMILY}">${esc(truncate(`${person.firstName} ${person.lastName}`, nameMaxChars))}</text>`;
 
-  // Role
+  // Role — clip to available width for proper ellipsis
   if (person.role) {
     const roleY = hasPhoto ? 44 : 40;
     const roleMaxChars = Math.floor(textAvailW / CHAR_W_10);
-    svg += `<text x="${textStartX}" y="${roleY}" fill="${esc(colors.textMuted)}" font-size="10" font-family="${FONT_FAMILY}">${esc(truncate(person.role, roleMaxChars))}</text>`;
+    const roleClipId = `role-clip-${esc(person.id)}`;
+    svg += `<defs><clipPath id="${roleClipId}"><rect x="${textStartX}" y="${roleY - 11}" width="${textAvailW}" height="14"/></clipPath></defs>`;
+    svg += `<text x="${textStartX}" y="${roleY}" fill="${esc(colors.textMuted)}" font-size="10" font-family="${FONT_FAMILY}" clip-path="url(#${roleClipId})">${esc(truncate(person.role, roleMaxChars))}</text>`;
   }
 
   // Company / Organization
