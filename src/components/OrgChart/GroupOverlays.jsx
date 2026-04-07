@@ -3,10 +3,12 @@ import { CARD_W, CARD_H } from '../../utils/orgLayout';
 
 const PAD = 24;
 const LABEL_FONT_SIZE = 16;
-const LABEL_PAD_Y = 8;
-// V_GAP/2 = 30 is where the horizontal connector runs above a child card.
-// Start the frame 4px below that line.
-const TOP_INSET = 2;
+const LABEL_PAD_Y = 14;
+const LABEL_INSET = 14;
+// Cards in groups are pushed down by GROUP_TITLE_SPACE (20) in the layout.
+// The horizontal connector runs at original minY - 50 (V_GAP/2 + GROUP_TITLE_SPACE).
+// Frame top sits 12px below the connector line.
+const FRAME_TOP_OFFSET = 38;
 
 function groupBounds(group, nodePositions) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -21,12 +23,11 @@ function groupBounds(group, nodePositions) {
     count++;
   }
   if (count < 2) return null;
-  const top = minY - TOP_INSET;
   return {
     x: minX - PAD,
-    y: top - LABEL_FONT_SIZE - LABEL_PAD_Y,
+    y: minY - FRAME_TOP_OFFSET,
     w: maxX - minX + PAD * 2,
-    h: maxY - minY + TOP_INSET + PAD + LABEL_FONT_SIZE + LABEL_PAD_Y,
+    h: maxY - minY + FRAME_TOP_OFFSET + PAD,
   };
 }
 
@@ -68,8 +69,8 @@ function GroupRect({ group, bounds, onUpdateLabel, onDelete }) {
       />
       {!editing ? (
         <text
-          x={bounds.x + 8}
-          y={bounds.y + LABEL_FONT_SIZE}
+          x={bounds.x + LABEL_INSET}
+          y={bounds.y + LABEL_FONT_SIZE + LABEL_INSET - LABEL_FONT_SIZE / 2}
           fill="#808098"
           fontSize={LABEL_FONT_SIZE}
           fontFamily="Inter, system-ui, sans-serif"
@@ -81,8 +82,8 @@ function GroupRect({ group, bounds, onUpdateLabel, onDelete }) {
         </text>
       ) : (
         <foreignObject
-          x={bounds.x + 4}
-          y={bounds.y}
+          x={bounds.x + LABEL_INSET - 2}
+          y={bounds.y + LABEL_INSET - LABEL_FONT_SIZE / 2 - 2}
           width={bounds.w - 8}
           height={LABEL_FONT_SIZE + 8}
         >

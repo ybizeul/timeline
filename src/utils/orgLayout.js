@@ -8,6 +8,8 @@ const CARD_H = 80;
 const H_GAP = 30;
 const V_GAP = 60;
 const GROUP_EXTRA_GAP = 24; // extra spacing between siblings in different groups
+const STAGGER_V_GAP = 20; // vertical gap between two staggered lanes of leaf children
+const GROUP_TITLE_SPACE = 20; // extra vertical space above grouped cards for group title
 
 export { CARD_W, CARD_H };
 
@@ -89,6 +91,7 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
   // Compute subtree widths bottom-up
   const subtreeWidth = new Map();
   const visited = new Set();
+  const staggeredParents = new Set(); // parents whose leaf children use two-row layout
 
   function computeWidth(id) {
     if (visited.has(id)) return CARD_W; // Cycle guard
@@ -108,10 +111,29 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
       subtreeWidth.set(id, CARD_W);
       return CARD_W;
     }
+
+    // Compute all children widths first
+    for (const cid of validChildren) {
+      computeWidth(cid);
+    }
+
+    // Check for staggered layout: 4+ children, all are leaves (subtreeWidth === CARD_W)
+    if (validChildren.length >= 4 && validChildren.every(cid => subtreeWidth.get(cid) === CARD_W)) {
+      staggeredParents.add(id);
+      const pitch = CARD_W + H_GAP;
+      const r1 = Math.ceil(validChildren.length / 2);
+      const r2 = Math.floor(validChildren.length / 2);
+      const row1Right = (r1 - 1) * pitch + CARD_W;
+      const row2Right = pitch / 2 + (r2 - 1) * pitch + CARD_W;
+      const w = Math.max(CARD_W, Math.max(row1Right, row2Right));
+      subtreeWidth.set(id, w);
+      return w;
+    }
+
     let totalW = 0;
     for (let i = 0; i < validChildren.length; i++) {
       if (i > 0) totalW += gapBetween(validChildren[i - 1], validChildren[i]);
-      totalW += computeWidth(validChildren[i]);
+      totalW += subtreeWidth.get(validChildren[i]);
     }
     const w = Math.max(CARD_W, totalW);
     subtreeWidth.set(id, w);
@@ -162,6 +184,34 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
         : children;
     if (validChildren.length === 0) return;
 
+    const childY = y + CARD_H + V_GAP;
+
+    // Staggered two-row brick layout for leaf children
+    if (staggeredParents.has(id)) {
+      const row1 = validChildren.filter((_, i) => i % 2 === 0); // even indices
+      const row2 = validChildren.filter((_, i) => i % 2 === 1); // odd indices
+      const pitch = CARD_W + H_GAP;
+      const totalW = subtreeWidth.get(id);
+      const leftEdge = cx - totalW / 2;
+      const childY2 = childY + CARD_H + STAGGER_V_GAP;
+
+      // Row 1: cards at leftEdge, leftEdge+pitch, leftEdge+2*pitch, ...
+      for (let i = 0; i < row1.length; i++) {
+        const childCx = leftEdge + CARD_W / 2 + i * pitch;
+        const gOff = personGroups.has(row1[i]) ? GROUP_TITLE_SPACE : 0;
+        positionSubtree(row1[i], childCx, childY + gOff);
+      }
+
+      // Row 2: offset by half a pitch so cards sit between row 1 cards
+      for (let i = 0; i < row2.length; i++) {
+        const childCx = leftEdge + pitch / 2 + CARD_W / 2 + i * pitch;
+        const gOff = personGroups.has(row2[i]) ? GROUP_TITLE_SPACE : 0;
+        positionSubtree(row2[i], childCx, childY2 + gOff);
+      }
+      return;
+    }
+
+    // Normal single-row layout
     // Compute total children width
     let totalChildW = 0;
     for (let i = 0; i < validChildren.length; i++) {
@@ -170,13 +220,13 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
     }
 
     let startX = cx - totalChildW / 2;
-    const childY = y + CARD_H + V_GAP;
 
     for (let i = 0; i < validChildren.length; i++) {
       const childId = validChildren[i];
       const childW = subtreeWidth.get(childId);
       const childCx = startX + childW / 2;
-      positionSubtree(childId, childCx, childY);
+      const gOff = personGroups.has(childId) ? GROUP_TITLE_SPACE : 0;
+      positionSubtree(childId, childCx, childY + gOff);
       startX += childW;
       if (i < validChildren.length - 1) {
         startX += gapBetween(childId, validChildren[i + 1]);

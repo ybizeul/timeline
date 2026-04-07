@@ -33,13 +33,21 @@ function truncate(str, maxLen) {
   return str.length > maxLen ? str.slice(0, maxLen - 1) + '…' : str;
 }
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function renderCardSvg(person, x, y, colors) {
   const hasPhoto = Boolean(person.photo);
   const textStartX = hasPhoto ? PHOTO_PAD + PHOTO_SIZE + 10 : TEXT_X_NO_PHOTO;
   const color = person.color || '#6050e0';
   const textAvailW = CARD_W - textStartX - TEXT_PAD_RIGHT;
-  const bgColor = color + '18';
-  const borderColor = color + '55';
+  // Use rgba() instead of hex alpha for PowerPoint compatibility
+  const bgColor = hexToRgba(color, 0.094);
+  const borderColor = hexToRgba(color, 0.333);
 
   let svg = `<g transform="translate(${x}, ${y})">`;
 
@@ -129,7 +137,7 @@ function buildOrgChartSvgString(people, focusedPersonId, collapsedIds, groups) {
   // Expand bounds to include group extents
   let expMinX = bounds.minX, expMinY = bounds.minY, expMaxX = bounds.maxX, expMaxY = bounds.maxY;
   if (groups && groups.length > 0) {
-    const GP = 24, GFS = 16, GPY = 8, GTI = 2;
+    const GP = 24, GFTO = 38;
     for (const group of groups) {
       let gMinX = Infinity, gMinY = Infinity, gMaxX = -Infinity, gMaxY = -Infinity;
       let cnt = 0;
@@ -144,7 +152,7 @@ function buildOrgChartSvgString(people, focusedPersonId, collapsedIds, groups) {
       }
       if (cnt < 2) continue;
       expMinX = Math.min(expMinX, gMinX - GP);
-      expMinY = Math.min(expMinY, gMinY - GTI - GFS - GPY);
+      expMinY = Math.min(expMinY, gMinY - GFTO);
       expMaxX = Math.max(expMaxX, gMaxX + GP);
       expMaxY = Math.max(expMaxY, gMaxY + GP);
     }
@@ -162,7 +170,7 @@ function buildOrgChartSvgString(people, focusedPersonId, collapsedIds, groups) {
 
   // Group overlays
   if (groups && groups.length > 0) {
-    const GP = 24, GFS = 16, GPY = 8, GTI = 2;
+    const GP = 24, GFS = 16, GFTO = 38, GLI = 14;
     for (const group of groups) {
       let gMinX = Infinity, gMinY = Infinity, gMaxX = -Infinity, gMaxY = -Infinity;
       let cnt = 0;
@@ -176,13 +184,12 @@ function buildOrgChartSvgString(people, focusedPersonId, collapsedIds, groups) {
         cnt++;
       }
       if (cnt < 2) continue;
-      const gTop = gMinY - GTI;
       const gx = gMinX - GP;
-      const gy = gTop - GFS - GPY;
+      const gy = gMinY - GFTO;
       const gw = gMaxX - gMinX + GP * 2;
-      const gh = gMaxY - gMinY + GTI + GP + GFS + GPY;
+      const gh = gMaxY - gMinY + GFTO + GP;
       svg += `<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}" rx="8" ry="8" fill="none" stroke="#606080" stroke-width="1.5" stroke-dasharray="6 4"/>`;
-      svg += `<text x="${gx + 8}" y="${gy + GFS}" fill="#808098" font-size="${GFS}" font-weight="700" font-family="${FONT_FAMILY}">${esc(group.label)}</text>`;
+      svg += `<text x="${gx + GLI}" y="${gy + GFS + GLI - GFS / 2}" fill="#808098" font-size="${GFS}" font-weight="700" font-family="${FONT_FAMILY}">${esc(group.label)}</text>`;
     }
   }
 
