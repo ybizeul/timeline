@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { CARD_W, CARD_H } from '../../utils/orgLayout';
 
-const PAD = 16;
-const LABEL_FONT_SIZE = 13;
-const LABEL_PAD_Y = 6;
+const PAD = 24;
+const LABEL_FONT_SIZE = 16;
+const LABEL_PAD_Y = 8;
 // V_GAP/2 = 30 is where the horizontal connector runs above a child card.
 // Start the frame 4px below that line.
-const TOP_INSET = 6;
+const TOP_INSET = 2;
 
 function groupBounds(group, nodePositions) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -73,7 +73,7 @@ function GroupRect({ group, bounds, onUpdateLabel, onDelete }) {
           fill="#808098"
           fontSize={LABEL_FONT_SIZE}
           fontFamily="Inter, system-ui, sans-serif"
-          fontWeight="500"
+          fontWeight="700"
           style={{ cursor: 'pointer' }}
           onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
         >

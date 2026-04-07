@@ -28,8 +28,8 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
 
   // Compute layout
   const layout = useMemo(
-    () => computeOrgLayout(people, focusedPersonId, collapsedIds),
-    [people, focusedPersonId, collapsedIds]
+    () => computeOrgLayout(people, focusedPersonId, collapsedIds, groups),
+    [people, focusedPersonId, collapsedIds, groups]
   );
 
   // Build a position lookup for edges

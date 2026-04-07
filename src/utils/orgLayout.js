@@ -7,6 +7,7 @@ const CARD_W = 260;
 const CARD_H = 80;
 const H_GAP = 30;
 const V_GAP = 60;
+const GROUP_EXTRA_GAP = 24; // extra spacing between siblings in different groups
 
 export { CARD_W, CARD_H };
 
@@ -17,9 +18,44 @@ export { CARD_W, CARD_H };
  * @param {Set|null} collapsedIds - set of person IDs whose children should be hidden
  * @returns {{ nodes: Array<{person, x, y, hasChildren, isCollapsed}>, edges: Array<{from, to, type}>, bounds: {minX, minY, maxX, maxY} }}
  */
-export function computeOrgLayout(people, focusedId = null, collapsedIds = null) {
+export function computeOrgLayout(people, focusedId = null, collapsedIds = null, groups = null) {
   if (!people || people.length === 0) {
     return { nodes: [], edges: [], bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 } };
+  }
+
+  // Build a set of group IDs per person (a person can be in multiple groups)
+  const personGroups = new Map(); // personId → Set of groupIds
+  if (groups) {
+    for (const g of groups) {
+      for (const pid of g.personIds) {
+        if (!personGroups.has(pid)) personGroups.set(pid, new Set());
+        personGroups.get(pid).add(g.id);
+      }
+    }
+  }
+
+  // Check if two people share at least one group
+  function shareGroup(idA, idB) {
+    const ga = personGroups.get(idA);
+    const gb = personGroups.get(idB);
+    if (!ga || !gb) return false;
+    for (const gid of ga) {
+      if (gb.has(gid)) return true;
+    }
+    return false;
+  }
+
+  // Check if either person is in any group (for boundary detection)
+  function eitherInGroup(idA, idB) {
+    return personGroups.has(idA) || personGroups.has(idB);
+  }
+
+  // Gap between two adjacent siblings: add extra if they're in different groups
+  function gapBetween(idA, idB) {
+    if (eitherInGroup(idA, idB) && !shareGroup(idA, idB)) {
+      return H_GAP + GROUP_EXTRA_GAP;
+    }
+    return H_GAP;
   }
 
   // Build adjacency: parentId → [childIds]
@@ -74,7 +110,7 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null) 
     }
     let totalW = 0;
     for (let i = 0; i < validChildren.length; i++) {
-      if (i > 0) totalW += H_GAP;
+      if (i > 0) totalW += gapBetween(validChildren[i - 1], validChildren[i]);
       totalW += computeWidth(validChildren[i]);
     }
     const w = Math.max(CARD_W, totalW);
@@ -103,7 +139,7 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null) 
   // Compute widths for all roots
   let totalRootsWidth = 0;
   for (let i = 0; i < roots.length; i++) {
-    if (i > 0) totalRootsWidth += H_GAP;
+    if (i > 0) totalRootsWidth += gapBetween(roots[i - 1], roots[i]);
     totalRootsWidth += computeWidth(roots[i]);
   }
 
@@ -129,28 +165,36 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null) 
     // Compute total children width
     let totalChildW = 0;
     for (let i = 0; i < validChildren.length; i++) {
-      if (i > 0) totalChildW += H_GAP;
+      if (i > 0) totalChildW += gapBetween(validChildren[i - 1], validChildren[i]);
       totalChildW += subtreeWidth.get(validChildren[i]);
     }
 
     let startX = cx - totalChildW / 2;
     const childY = y + CARD_H + V_GAP;
 
-    for (const childId of validChildren) {
+    for (let i = 0; i < validChildren.length; i++) {
+      const childId = validChildren[i];
       const childW = subtreeWidth.get(childId);
       const childCx = startX + childW / 2;
       positionSubtree(childId, childCx, childY);
-      startX += childW + H_GAP;
+      startX += childW;
+      if (i < validChildren.length - 1) {
+        startX += gapBetween(childId, validChildren[i + 1]);
+      }
     }
   }
 
   // Position all roots side by side
   let startX = -totalRootsWidth / 2;
-  for (const rootId of roots) {
+  for (let i = 0; i < roots.length; i++) {
+    const rootId = roots[i];
     const rootW = subtreeWidth.get(rootId);
     const cx = startX + rootW / 2;
     positionSubtree(rootId, cx, 0);
-    startX += rootW + H_GAP;
+    startX += rootW;
+    if (i < roots.length - 1) {
+      startX += gapBetween(rootId, roots[i + 1]);
+    }
   }
 
   // Build edges

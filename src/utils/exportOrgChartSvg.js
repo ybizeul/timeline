@@ -105,9 +105,9 @@ function sanitizeFilename(name) {
   return name.replace(/[^a-zA-Z0-9_\-. ]/g, '_').trim() || 'orgchart';
 }
 
-function buildOrgChartSvgString(people, focusedPersonId, collapsedIds) {
+function buildOrgChartSvgString(people, focusedPersonId, collapsedIds, groups) {
   const colors = getColors();
-  const layout = computeOrgLayout(people, focusedPersonId, collapsedIds);
+  const layout = computeOrgLayout(people, focusedPersonId, collapsedIds, groups);
   const { nodes, edges, bounds } = layout;
 
   if (nodes.length === 0) return null;
@@ -117,15 +117,65 @@ function buildOrgChartSvgString(people, focusedPersonId, collapsedIds) {
     nodePositions.set(n.person.id, n);
   }
 
-  const svgW = bounds.maxX - bounds.minX + PADDING * 2;
-  const svgH = bounds.maxY - bounds.minY + PADDING * 2;
-  const offsetX = -bounds.minX + PADDING;
-  const offsetY = -bounds.minY + PADDING;
+  // Expand bounds to include group extents
+  let expMinX = bounds.minX, expMinY = bounds.minY, expMaxX = bounds.maxX, expMaxY = bounds.maxY;
+  if (groups && groups.length > 0) {
+    const GP = 24, GFS = 16, GPY = 8, GTI = 2;
+    for (const group of groups) {
+      let gMinX = Infinity, gMinY = Infinity, gMaxX = -Infinity, gMaxY = -Infinity;
+      let cnt = 0;
+      for (const pid of group.personIds) {
+        const n = nodePositions.get(pid);
+        if (!n) continue;
+        gMinX = Math.min(gMinX, n.x);
+        gMinY = Math.min(gMinY, n.y);
+        gMaxX = Math.max(gMaxX, n.x + CARD_W);
+        gMaxY = Math.max(gMaxY, n.y + CARD_H);
+        cnt++;
+      }
+      if (cnt < 2) continue;
+      expMinX = Math.min(expMinX, gMinX - GP);
+      expMinY = Math.min(expMinY, gMinY - GTI - GFS - GPY);
+      expMaxX = Math.max(expMaxX, gMaxX + GP);
+      expMaxY = Math.max(expMaxY, gMaxY + GP);
+    }
+  }
+
+  const svgW = expMaxX - expMinX + PADDING * 2;
+  const svgH = expMaxY - expMinY + PADDING * 2;
+  const offsetX = -expMinX + PADDING;
+  const offsetY = -expMinY + PADDING;
 
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">`;
   svg += `<style>text { font-family: ${FONT_FAMILY}; }</style>`;
   svg += `<rect width="${svgW}" height="${svgH}" fill="${esc(colors.bg)}"/>`;
   svg += `<g transform="translate(${offsetX}, ${offsetY})">`;
+
+  // Group overlays
+  if (groups && groups.length > 0) {
+    const GP = 24, GFS = 16, GPY = 8, GTI = 2;
+    for (const group of groups) {
+      let gMinX = Infinity, gMinY = Infinity, gMaxX = -Infinity, gMaxY = -Infinity;
+      let cnt = 0;
+      for (const pid of group.personIds) {
+        const n = nodePositions.get(pid);
+        if (!n) continue;
+        gMinX = Math.min(gMinX, n.x);
+        gMinY = Math.min(gMinY, n.y);
+        gMaxX = Math.max(gMaxX, n.x + CARD_W);
+        gMaxY = Math.max(gMaxY, n.y + CARD_H);
+        cnt++;
+      }
+      if (cnt < 2) continue;
+      const gTop = gMinY - GTI;
+      const gx = gMinX - GP;
+      const gy = gTop - GFS - GPY;
+      const gw = gMaxX - gMinX + GP * 2;
+      const gh = gMaxY - gMinY + GTI + GP + GFS + GPY;
+      svg += `<rect x="${gx}" y="${gy}" width="${gw}" height="${gh}" rx="8" ry="8" fill="none" stroke="#606080" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+      svg += `<text x="${gx + 8}" y="${gy + GFS}" fill="#808098" font-size="${GFS}" font-weight="700" font-family="${FONT_FAMILY}">${esc(group.label)}</text>`;
+    }
+  }
 
   for (const edge of edges) {
     svg += renderEdgeSvg(edge, nodePositions, colors);
@@ -157,20 +207,20 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-export function exportOrgChartSvg({ people, chartName, focusedPersonId, collapsedIds }) {
+export function exportOrgChartSvg({ people, chartName, focusedPersonId, collapsedIds, groups }) {
   if (!people.length) return;
 
-  const result = buildOrgChartSvgString(people, focusedPersonId, collapsedIds);
+  const result = buildOrgChartSvgString(people, focusedPersonId, collapsedIds, groups);
   if (!result) return;
 
   const blob = new Blob([result.svg], { type: 'image/svg+xml' });
   downloadBlob(blob, `${sanitizeFilename(chartName)}.svg`);
 }
 
-export function exportOrgChartPng({ people, chartName, focusedPersonId, collapsedIds, scale = 2 }) {
+export function exportOrgChartPng({ people, chartName, focusedPersonId, collapsedIds, groups, scale = 2 }) {
   if (!people.length) return;
 
-  const result = buildOrgChartSvgString(people, focusedPersonId, collapsedIds);
+  const result = buildOrgChartSvgString(people, focusedPersonId, collapsedIds, groups);
   if (!result) return;
 
   const { svg, svgW, svgH } = result;

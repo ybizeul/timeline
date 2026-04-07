@@ -221,23 +221,23 @@ export default function App() {
   }, [orgFitToScreen]);
 
   const handleOrgFitBtn = useCallback(() => {
-    const layout = computeOrgLayout(people, focusedPersonId, collapsedIds);
+    const layout = computeOrgLayout(people, focusedPersonId, collapsedIds, groups);
     const el = document.querySelector('.orgchart-wrapper');
     if (el) {
       const rect = el.getBoundingClientRect();
       orgFitToScreen(layout.bounds, rect.width, rect.height);
     }
-  }, [people, focusedPersonId, orgFitToScreen]);
+  }, [people, focusedPersonId, collapsedIds, groups, orgFitToScreen]);
 
   const activeChartName = charts.find(c => c.id === activeChartId)?.name ?? 'Org Chart';
 
   const handleExportOrgChartSvg = useCallback(() => {
-    exportOrgChartSvg({ people, chartName: activeChartName, focusedPersonId, collapsedIds });
-  }, [people, activeChartName, focusedPersonId, collapsedIds]);
+    exportOrgChartSvg({ people, chartName: activeChartName, focusedPersonId, collapsedIds, groups });
+  }, [people, activeChartName, focusedPersonId, collapsedIds, groups]);
 
   const handleExportOrgChartPng = useCallback(() => {
-    exportOrgChartPng({ people, chartName: activeChartName, focusedPersonId, collapsedIds });
-  }, [people, activeChartName, focusedPersonId, collapsedIds]);
+    exportOrgChartPng({ people, chartName: activeChartName, focusedPersonId, collapsedIds, groups });
+  }, [people, activeChartName, focusedPersonId, collapsedIds, groups]);
 
   const focusedPersonName = focusedPersonId
     ? (() => { const p = people.find(pp => pp.id === focusedPersonId); return p ? `${p.firstName} ${p.lastName}` : ''; })()
