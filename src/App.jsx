@@ -11,6 +11,7 @@ import { useEvents } from './hooks/useEvents';
 import { useTimelines } from './hooks/useTimelines';
 import { useOrgCharts } from './hooks/useOrgCharts';
 import { usePeople } from './hooks/usePeople';
+import { useGroups } from './hooks/useGroups';
 import { useOrgViewport } from './hooks/useOrgViewport';
 import { exportTimelineSvg } from './utils/exportSvg';
 import { exportOrgChartSvg, exportOrgChartPng } from './utils/exportOrgChartSvg';
@@ -60,6 +61,7 @@ export default function App() {
   // ── Org Chart state ──
   const { charts, activeId: activeChartId, switchChart, addChart, renameChart, deleteChart, importChart } = useOrgCharts();
   const { people, addPerson, updatePerson, deletePerson } = usePeople(activeChartId);
+  const { groups, addGroup, updateGroup, deleteGroup, cleanupPerson: cleanupPersonGroups } = useGroups(activeChartId);
   const { viewport: orgViewport, panBy: orgPanBy, panTo: orgPanTo, zoomAt: orgZoomAt, zoomIn: orgZoomIn, zoomOut: orgZoomOut, fitToScreen: orgFitToScreen, resetView: orgResetView } = useOrgViewport(activeChartId);
   const [personEditor, setPersonEditor] = useState({ isOpen: false, person: null });
   const [focusedPersonId, setFocusedPersonId] = useState(null);
@@ -177,9 +179,10 @@ export default function App() {
 
   const handlePersonDelete = useCallback((id) => {
     deletePerson(id);
+    cleanupPersonGroups(id);
     closePersonEditor();
     if (focusedPersonId === id) setFocusedPersonId(null);
-  }, [deletePerson, closePersonEditor, focusedPersonId]);
+  }, [deletePerson, cleanupPersonGroups, closePersonEditor, focusedPersonId]);
 
   const handleToggleFocus = useCallback((id) => {
     setFocusedPersonId(prev => prev === id ? null : id);
@@ -200,6 +203,18 @@ export default function App() {
       return next;
     });
   }, []);
+
+  const handleCreateGroup = useCallback((personIds) => {
+    addGroup(personIds, 'Group');
+  }, [addGroup]);
+
+  const handleUpdateGroupLabel = useCallback((id, label) => {
+    updateGroup(id, { label });
+  }, [updateGroup]);
+
+  const handleDeleteGroup = useCallback((id) => {
+    deleteGroup(id);
+  }, [deleteGroup]);
 
   const handleOrgFitToScreen = useCallback((bounds, w, h) => {
     orgFitToScreen(bounds, w, h);
@@ -341,6 +356,10 @@ export default function App() {
               onToggleCollapse={handleToggleCollapse}
               onToggleFocus={handleToggleFocus}
               showCardControls={showCardControls}
+              groups={groups}
+              onCreateGroup={handleCreateGroup}
+              onUpdateGroupLabel={handleUpdateGroupLabel}
+              onDeleteGroup={handleDeleteGroup}
             />
             <PersonEditor
               person={personEditor.person}

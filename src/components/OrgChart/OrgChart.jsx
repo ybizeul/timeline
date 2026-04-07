@@ -2,15 +2,17 @@ import { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import { computeOrgLayout, CARD_W, CARD_H } from '../../utils/orgLayout';
 import { PersonCard } from './PersonCard';
 import { OrgConnectors } from './OrgConnectors';
+import { GroupOverlays } from './GroupOverlays';
 import './OrgChart.css';
 
 const ZOOM_SENSITIVITY = 0.003;
 const DRAG_THRESHOLD = 4;
 
-export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls }) {
+export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup }) {
   const wrapperRef = useRef(null);
   const dragRef = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   // Track container size
   useEffect(() => {
@@ -122,12 +124,37 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
     return () => el.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
-  const handleCardClick = useCallback((person) => {
+  const handleCardClick = useCallback((person, e) => {
     // Only fire click if we didn't drag
-    if (!dragRef.current?.moved) {
-      onPersonClick(person);
-    }
+    if (dragRef.current?.moved) return;
+    // Single click toggles selection
+    setSelectedIds(prev => {
+      const next = new Set(e?.shiftKey ? prev : []);
+      if (next.has(person.id)) next.delete(person.id);
+      else next.add(person.id);
+      return next;
+    });
+  }, []);
+
+  const handleCardDoubleClick = useCallback((person) => {
+    setSelectedIds(new Set());
+    onPersonClick(person);
   }, [onPersonClick]);
+
+  const handleCreateGroup = useCallback(() => {
+    if (selectedIds.size < 2) return;
+    onCreateGroup([...selectedIds]);
+    setSelectedIds(new Set());
+  }, [selectedIds, onCreateGroup]);
+
+  // Clear selection on Escape
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') setSelectedIds(new Set());
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const focusedPerson = focusedPersonId ? people.find(p => p.id === focusedPersonId) : null;
 
@@ -158,6 +185,12 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
 
       <svg className="orgchart-svg" width={size.w} height={size.h}>
         <g transform={`translate(${viewport.panX}, ${viewport.panY}) scale(${viewport.zoom})`}>
+          <GroupOverlays
+            groups={groups}
+            nodePositions={nodePositions}
+            onUpdateLabel={(id, label) => onUpdateGroupLabel(id, label)}
+            onDelete={onDeleteGroup}
+          />
           <OrgConnectors edges={layout.edges} nodePositions={nodePositions} />
           {layout.nodes.map(n => (
             <PersonCard
@@ -166,16 +199,27 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
               x={n.x}
               y={n.y}
               onClick={handleCardClick}
+              onDoubleClick={handleCardDoubleClick}
               hasChildren={n.hasChildren}
               isCollapsed={n.isCollapsed}
               onToggleCollapse={onToggleCollapse}
               isFocused={focusedPersonId === n.person.id}
               onToggleFocus={onToggleFocus}
               showControls={showCardControls}
+              isSelected={selectedIds.has(n.person.id)}
             />
           ))}
         </g>
       </svg>
+
+      {selectedIds.size >= 2 && (
+        <button
+          className="orgchart-create-group-btn"
+          onClick={handleCreateGroup}
+        >
+          Create Group ({selectedIds.size})
+        </button>
+      )}
     </div>
   );
 }

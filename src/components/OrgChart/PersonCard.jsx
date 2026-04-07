@@ -11,7 +11,7 @@ const CHAR_W_12 = 6.8;  // fontSize 12, weight 600
 const CHAR_W_10 = 5.8;  // fontSize 10
 const CHAR_W_9  = 5.2;  // fontSize 9
 
-export function PersonCard({ person, x, y, onClick, hasChildren, isCollapsed, onToggleCollapse, isFocused, onToggleFocus, showControls }) {
+export function PersonCard({ person, x, y, onClick, onDoubleClick, hasChildren, isCollapsed, onToggleCollapse, isFocused, onToggleFocus, showControls, isSelected }) {
   const hasPhoto = Boolean(person.photo);
   const textStartX = hasPhoto ? PHOTO_PAD + PHOTO_SIZE + 10 : TEXT_X_NO_PHOTO;
   const color = person.color || '#6050e0';
@@ -25,8 +25,24 @@ export function PersonCard({ person, x, y, onClick, hasChildren, isCollapsed, on
     <g
       className="orgchart-card"
       transform={`translate(${x}, ${y})`}
-      onClick={(e) => { e.stopPropagation(); onClick(person); }}
+      onClick={(e) => { e.stopPropagation(); onClick(person, e); }}
+      onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick && onDoubleClick(person); }}
     >
+      {/* Selection highlight */}
+      {isSelected && (
+        <rect
+          x={-3}
+          y={-3}
+          width={CARD_W + 6}
+          height={CARD_H + 6}
+          rx={RADIUS + 2}
+          ry={RADIUS + 2}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={2}
+          strokeDasharray="4 3"
+        />
+      )}
       {/* Clip paths */}
       <defs>
         <clipPath id={`card-clip-${person.id}`}>
