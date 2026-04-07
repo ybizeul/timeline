@@ -1,17 +1,36 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { Sidebar } from './components/Sidebar/Sidebar';
 import { Controls } from './components/Controls/Controls';
+import { OrgChartControls } from './components/Controls/OrgChartControls';
 import { Timeline } from './components/Timeline/Timeline';
 import { EventEditor } from './components/EventEditor/EventEditor';
+import { OrgChart } from './components/OrgChart/OrgChart';
+import { PersonEditor } from './components/PersonEditor/PersonEditor';
 import { useViewport } from './hooks/useViewport';
 import { useEvents } from './hooks/useEvents';
 import { useTimelines } from './hooks/useTimelines';
+import { useOrgCharts } from './hooks/useOrgCharts';
+import { usePeople } from './hooks/usePeople';
+import { useOrgViewport } from './hooks/useOrgViewport';
 import { exportTimelineSvg } from './utils/exportSvg';
+import { exportOrgChartSvg, exportOrgChartPng } from './utils/exportOrgChartSvg';
+import { computeOrgLayout } from './utils/orgLayout';
 import './App.css';
 
 const MIN_TL_HEIGHT = 100;
 const DEFAULT_TL_HEIGHT = 320;
 
 export default function App() {
+  const [mode, setMode] = useState(() => {
+    try { return localStorage.getItem('app_mode') || 'timeline'; } catch { return 'timeline'; }
+  });
+
+  // Persist mode
+  useEffect(() => {
+    try { localStorage.setItem('app_mode', mode); } catch { /* ignore */ }
+  }, [mode]);
+
+  // ── Timeline state ──
   const { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline, importTimeline } = useTimelines();
 
   const {
@@ -37,6 +56,24 @@ export default function App() {
   const [showWeekends, setShowWeekends] = useState(true);
   const [tlHeight, setTlHeight] = useState(() => viewport.tlHeight ?? DEFAULT_TL_HEIGHT);
   const resizeDragRef = useRef(null);
+
+  // ── Org Chart state ──
+  const { charts, activeId: activeChartId, switchChart, addChart, renameChart, deleteChart, importChart } = useOrgCharts();
+  const { people, addPerson, updatePerson, deletePerson } = usePeople(activeChartId);
+  const { viewport: orgViewport, panBy: orgPanBy, panTo: orgPanTo, zoomAt: orgZoomAt, zoomIn: orgZoomIn, zoomOut: orgZoomOut, fitToScreen: orgFitToScreen, resetView: orgResetView } = useOrgViewport(activeChartId);
+  const [personEditor, setPersonEditor] = useState({ isOpen: false, person: null });
+  const [focusedPersonId, setFocusedPersonId] = useState(null);
+  const [showCardControls, setShowCardControls] = useState(() => {
+    try { return localStorage.getItem('orgchart_show_card_controls') !== 'false'; } catch { return true; }
+  });
+  const [collapsedIds, setCollapsedIds] = useState(() => {
+    if (!activeChartId) return new Set();
+    try {
+      const raw = localStorage.getItem(`orgchart_collapsed_${activeChartId}`);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+  });
+  const orgChartRef = useRef(null);
 
   // Restore tlHeight when switching timelines
   useEffect(() => {
@@ -116,53 +153,206 @@ export default function App() {
     });
   }, [events, viewport, svgWidthRef, activeName, showToday, showWeekends]);
 
+  // ── Org Chart handlers ──
+  const openAddPerson = useCallback(() => {
+    setPersonEditor({ isOpen: true, person: null });
+  }, []);
+
+  const openEditPerson = useCallback((person) => {
+    setPersonEditor({ isOpen: true, person });
+  }, []);
+
+  const closePersonEditor = useCallback(() => {
+    setPersonEditor(prev => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const handlePersonSave = useCallback((data) => {
+    if (data.id) {
+      updatePerson(data.id, data);
+    } else {
+      addPerson(data);
+    }
+    closePersonEditor();
+  }, [addPerson, updatePerson, closePersonEditor]);
+
+  const handlePersonDelete = useCallback((id) => {
+    deletePerson(id);
+    closePersonEditor();
+    if (focusedPersonId === id) setFocusedPersonId(null);
+  }, [deletePerson, closePersonEditor, focusedPersonId]);
+
+  const handleToggleFocus = useCallback((id) => {
+    setFocusedPersonId(prev => prev === id ? null : id);
+  }, []);
+
+  const handleClearFocus = useCallback(() => {
+    setFocusedPersonId(null);
+  }, []);
+
+  const handleToggleCollapse = useCallback((personId) => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(personId)) {
+        next.delete(personId);
+      } else {
+        next.add(personId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleOrgFitToScreen = useCallback((bounds, w, h) => {
+    orgFitToScreen(bounds, w, h);
+  }, [orgFitToScreen]);
+
+  const handleOrgFitBtn = useCallback(() => {
+    const layout = computeOrgLayout(people, focusedPersonId, collapsedIds);
+    const el = document.querySelector('.orgchart-wrapper');
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      orgFitToScreen(layout.bounds, rect.width, rect.height);
+    }
+  }, [people, focusedPersonId, orgFitToScreen]);
+
+  const activeChartName = charts.find(c => c.id === activeChartId)?.name ?? 'Org Chart';
+
+  const handleExportOrgChartSvg = useCallback(() => {
+    exportOrgChartSvg({ people, chartName: activeChartName, focusedPersonId, collapsedIds });
+  }, [people, activeChartName, focusedPersonId, collapsedIds]);
+
+  const handleExportOrgChartPng = useCallback(() => {
+    exportOrgChartPng({ people, chartName: activeChartName, focusedPersonId, collapsedIds });
+  }, [people, activeChartName, focusedPersonId, collapsedIds]);
+
+  const focusedPersonName = focusedPersonId
+    ? (() => { const p = people.find(pp => pp.id === focusedPersonId); return p ? `${p.firstName} ${p.lastName}` : ''; })()
+    : '';
+
+  // Persist collapsed state
+  useEffect(() => {
+    if (!activeChartId) return;
+    try {
+      localStorage.setItem(`orgchart_collapsed_${activeChartId}`, JSON.stringify([...collapsedIds]));
+    } catch { /* ignore */ }
+  }, [activeChartId, collapsedIds]);
+
+  // Clear focus and restore collapsed state when switching org charts
+  useEffect(() => {
+    setFocusedPersonId(null);
+    try {
+      const raw = localStorage.getItem(`orgchart_collapsed_${activeChartId}`);
+      setCollapsedIds(raw ? new Set(JSON.parse(raw)) : new Set());
+    } catch { setCollapsedIds(new Set()); }
+  }, [activeChartId]);
+
   return (
     <div className="app">
-      <Controls
-        viewport={viewport}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onScrollLeft={scrollLeft}
-        onScrollRight={scrollRight}
-        onToday={goToday}
-        onAddEvent={openAddEvent}
-        showToday={showToday}
-        onToggleToday={() => setShowToday(v => !v)}
-        showWeekends={showWeekends}
-        onToggleWeekends={() => setShowWeekends(v => !v)}
-        timelines={timelines}
-        activeTimelineId={activeId}
-        onSwitchTimeline={switchTimeline}
-        onAddTimeline={addTimeline}
-        onRenameTimeline={renameTimeline}
-        onDeleteTimeline={deleteTimeline}
-        onImportTimeline={importTimeline}
-        onExportSvg={handleExportSvg}
-        hasEvents={events.length > 0}
-        onSavePosition={savePosition}
-        onRecallPosition={recallPosition}
-        hasSavedPosition={hasSavedPosition}
-      />
-      <Timeline
-        viewport={viewport}
-        events={events}
-        setSvgWidth={setSvgWidth}
-        onWheel={handleWheel}
-        onPan={panBy}
-        onEventClick={openEditEvent}
-        showToday={showToday}
-        showWeekends={showWeekends}
-        height={tlHeight}
-      />
-      <div className="timeline-resize-handle" onPointerDown={handleResizePointerDown} />
-      <EventEditor
-        event={editor.event}
-        defaultStart={editor.defaultStart}
-        isOpen={editor.isOpen}
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onClose={closeEditor}
-      />
+      <Sidebar mode={mode} onModeChange={setMode} />
+      <div className="app__main">
+        {mode === 'timeline' ? (
+          <>
+            <Controls
+              viewport={viewport}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onScrollLeft={scrollLeft}
+              onScrollRight={scrollRight}
+              onToday={goToday}
+              onAddEvent={openAddEvent}
+              showToday={showToday}
+              onToggleToday={() => setShowToday(v => !v)}
+              showWeekends={showWeekends}
+              onToggleWeekends={() => setShowWeekends(v => !v)}
+              timelines={timelines}
+              activeTimelineId={activeId}
+              onSwitchTimeline={switchTimeline}
+              onAddTimeline={addTimeline}
+              onRenameTimeline={renameTimeline}
+              onDeleteTimeline={deleteTimeline}
+              onImportTimeline={importTimeline}
+              onExportSvg={handleExportSvg}
+              hasEvents={events.length > 0}
+              onSavePosition={savePosition}
+              onRecallPosition={recallPosition}
+              hasSavedPosition={hasSavedPosition}
+            />
+            <Timeline
+              viewport={viewport}
+              events={events}
+              setSvgWidth={setSvgWidth}
+              onWheel={handleWheel}
+              onPan={panBy}
+              onEventClick={openEditEvent}
+              showToday={showToday}
+              showWeekends={showWeekends}
+              height={tlHeight}
+            />
+            <div className="timeline-resize-handle" onPointerDown={handleResizePointerDown} />
+            <EventEditor
+              event={editor.event}
+              defaultStart={editor.defaultStart}
+              isOpen={editor.isOpen}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onClose={closeEditor}
+            />
+          </>
+        ) : (
+          <>
+            <OrgChartControls
+              charts={charts}
+              activeChartId={activeChartId}
+              onSwitchChart={switchChart}
+              onAddChart={addChart}
+              onRenameChart={renameChart}
+              onDeleteChart={deleteChart}
+              onImportChart={importChart}
+              hasPeople={people.length > 0}
+              onAddPerson={openAddPerson}
+              onZoomIn={orgZoomIn}
+              onZoomOut={orgZoomOut}
+              onFitToScreen={handleOrgFitBtn}
+              focusedPersonId={focusedPersonId}
+              focusedPersonName={focusedPersonName}
+              onClearFocus={handleClearFocus}
+              onExportSvg={handleExportOrgChartSvg}
+              onExportPng={handleExportOrgChartPng}
+              showCardControls={showCardControls}
+              onToggleCardControls={() => {
+                setShowCardControls(p => {
+                  const next = !p;
+                  try { localStorage.setItem('orgchart_show_card_controls', String(next)); } catch {}
+                  return next;
+                });
+              }}
+            />
+            <OrgChart
+              ref={orgChartRef}
+              people={people}
+              viewport={orgViewport}
+              onPan={orgPanBy}
+              onPanTo={orgPanTo}
+              onZoomAt={orgZoomAt}
+              onPersonClick={openEditPerson}
+              onFitToScreen={handleOrgFitToScreen}
+              focusedPersonId={focusedPersonId}
+              onClearFocus={handleClearFocus}
+              collapsedIds={collapsedIds}
+              onToggleCollapse={handleToggleCollapse}
+              onToggleFocus={handleToggleFocus}
+              showCardControls={showCardControls}
+            />
+            <PersonEditor
+              person={personEditor.person}
+              isOpen={personEditor.isOpen}
+              onSave={handlePersonSave}
+              onDelete={handlePersonDelete}
+              onClose={closePersonEditor}
+              people={people}
+            />
+          </>
+        )}
+      </div>
       <span className="app-version">{__APP_VERSION__}</span>
     </div>
   );
