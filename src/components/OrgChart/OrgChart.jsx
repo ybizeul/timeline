@@ -85,7 +85,7 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
     e.preventDefault();
     // Cancel any running inertia animation
     if (inertiaRef.current) { cancelAnimationFrame(inertiaRef.current.raf); inertiaRef.current = null; }
-    dragRef.current = { startX: e.clientX, startY: e.clientY, moved: false, lastTime: Date.now(), vx: 0, vy: 0 };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, moved: false, isTouch: e.pointerType === 'touch', lastTime: Date.now(), vx: 0, vy: 0 };
 
     const onMove = (ev) => {
       if (!dragRef.current) return;
@@ -95,18 +95,20 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
       dragRef.current.moved = true;
       dragRef.current.startX = ev.clientX;
       dragRef.current.startY = ev.clientY;
-      // Track velocity for inertia
-      const now = Date.now();
-      const dt = now - dragRef.current.lastTime;
-      if (dt > 0) { dragRef.current.vx = dx / dt; dragRef.current.vy = dy / dt; }
-      dragRef.current.lastTime = now;
+      // Track velocity for inertia (touch only)
+      if (dragRef.current.isTouch) {
+        const now = Date.now();
+        const dt = now - dragRef.current.lastTime;
+        if (dt > 0) { dragRef.current.vx = dx / dt; dragRef.current.vy = dy / dt; }
+        dragRef.current.lastTime = now;
+      }
       onPan(dx, dy);
     };
 
     const onUp = () => {
       // Start inertia if we were dragging with enough velocity
       const d = dragRef.current;
-      if (d?.moved) {
+      if (d?.isTouch && d.moved) {
         let vx = d.vx * 16, vy = d.vy * 16; // px/ms → px/frame
         if (Math.abs(vx) > INERTIA_MIN_V || Math.abs(vy) > INERTIA_MIN_V) {
           const tick = () => {

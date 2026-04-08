@@ -103,6 +103,7 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
       startX: e.clientX, startY: e.clientY,
       cursorX: e.clientX - rect.left,
       hasMoved: false, axis: null,
+      isTouch: e.pointerType === 'touch',
       lastTime: Date.now(), vx: 0,
     };
   }, []);
@@ -128,11 +129,13 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
     if (d.hasMoved) {
       if (d.axis === 'pan') {
         onPan(-dx);
-        // Track velocity for inertia
-        const now = Date.now();
-        const dt = now - d.lastTime;
-        if (dt > 0) { d.vx = -dx / dt; }
-        d.lastTime = now;
+        // Track velocity for inertia (touch only)
+        if (d.isTouch) {
+          const now = Date.now();
+          const dt = now - d.lastTime;
+          if (dt > 0) { d.vx = -dx / dt; }
+          d.lastTime = now;
+        }
       } else {
         // drag up (negative dy) = zoom in (factor < 1)
         const factor = 1 + dy * DRAG_ZOOM_SENSITIVITY;
@@ -145,8 +148,8 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
 
   const handlePointerUp = useCallback(() => {
     const d = dragRef.current;
-    // Start inertia if we were panning with enough velocity
-    if (d?.hasMoved && d.axis === 'pan' && Math.abs(d.vx) > INERTIA_MIN_V / 1000) {
+    // Start inertia if we were panning via touch with enough velocity
+    if (d?.isTouch && d.hasMoved && d.axis === 'pan' && Math.abs(d.vx) > INERTIA_MIN_V / 1000) {
       let vx = d.vx * 16; // convert from px/ms to px/frame (~16ms)
       const tick = () => {
         vx *= INERTIA_FRICTION;
