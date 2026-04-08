@@ -1,12 +1,103 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { OrgChartMenu } from './OrgChartMenu';
 import './Controls.css';
+
+function ToolbarSearch({ people, onSelect }) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return people;
+    const q = query.toLowerCase();
+    return people.filter(p => {
+      const name = `${p.firstName} ${p.lastName}`.toLowerCase();
+      const role = (p.role || '').toLowerCase();
+      return name.includes(q) || role.includes(q);
+    });
+  }, [people, query]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onMouseDown = (e) => {
+      if (!wrapRef.current?.contains(e.target)) { setIsOpen(false); setMobileOpen(false); }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [isOpen]);
+
+  const handleSelect = useCallback((person) => {
+    onSelect(person.id);
+    setQuery('');
+    setIsOpen(false);
+    setMobileOpen(false);
+  }, [onSelect]);
+
+  const handleFocus = () => { setIsOpen(true); };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') { setIsOpen(false); setMobileOpen(false); e.stopPropagation(); }
+  };
+
+  const toggleMobile = () => {
+    setMobileOpen(o => {
+      if (!o) setTimeout(() => inputRef.current?.focus(), 0);
+      else { setIsOpen(false); setQuery(''); }
+      return !o;
+    });
+  };
+
+  return (
+    <div className="toolbar-search" ref={wrapRef}>
+      <button
+        className="ctrl-btn toolbar-search__mobile-btn"
+        onClick={toggleMobile}
+        title="Search people"
+      >🔍</button>
+      <div className={`toolbar-search__field${mobileOpen ? ' is-mobile-open' : ''}`}>
+        <span className="toolbar-search__icon">🔍</span>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
+          placeholder="Search…"
+          autoComplete="off"
+        />
+      </div>
+      {isOpen && people.length > 0 && (
+        <div className="toolbar-search__dropdown">
+          {filtered.length === 0 && query && (
+            <div className="toolbar-search__empty">No matches</div>
+          )}
+          {filtered.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              className="toolbar-search__option"
+              onClick={() => handleSelect(p)}
+            >
+              <span className="toolbar-search__option-dot" style={{ background: p.color || '#6050e0' }} />
+              <span className="toolbar-search__option-name">{p.firstName} {p.lastName}</span>
+              {p.role && <span className="toolbar-search__option-role">{p.role}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function OrgChartControls({
   charts, activeChartId, onSwitchChart, onAddChart, onRenameChart, onDeleteChart, onImportChart,
   hasPeople, onAddPerson, onZoomIn, onZoomOut, onFitToScreen,
   focusedPersonId, focusedPersonName, onClearFocus, onExportSvg, onExportPng,
   showCardControls, onToggleCardControls,
+  people, onSelectPerson,
 }) {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef(null);
@@ -90,6 +181,10 @@ export function OrgChartControls({
           </div>
         )}
       </div>
+
+      {people.length > 0 && (
+        <ToolbarSearch people={people} onSelect={onSelectPerson} />
+      )}
 
       <div className="controls__spacer" />
       <button className="ctrl-btn ctrl-btn--accent" onClick={onAddPerson}>

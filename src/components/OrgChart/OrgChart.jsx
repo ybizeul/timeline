@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect, useState, useMemo } from 'react';
+import { useRef, useCallback, useEffect, useState, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { computeOrgLayout, CARD_W, CARD_H } from '../../utils/orgLayout';
 import { PersonCard } from './PersonCard';
 import { OrgConnectors } from './OrgConnectors';
@@ -10,7 +10,7 @@ const DRAG_THRESHOLD = 4;
 const INERTIA_FRICTION = 0.92;
 const INERTIA_MIN_V = 0.5;
 
-export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup }) {
+export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup }, ref) {
   const wrapperRef = useRef(null);
   const dragRef = useRef(null);
   const pinchRef = useRef(null);
@@ -44,6 +44,19 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
     }
     return map;
   }, [layout.nodes]);
+
+  // Expose imperative methods for parent
+  useImperativeHandle(ref, () => ({
+    selectAndCenter(personId) {
+      const node = nodePositions.get(personId);
+      if (!node || size.w <= 0 || size.h <= 0) return;
+      setSelectedIds(new Set([personId]));
+      const z = viewport.zoom;
+      const panX = size.w / 2 - (node.x + CARD_W / 2) * z;
+      const panY = size.h / 2 - (node.y + CARD_H / 2) * z;
+      onPanTo(panX, panY);
+    },
+  }), [nodePositions, size, viewport.zoom, onPanTo]);
 
   // Pan to show tree on focus change, keeping focused card visible
   useEffect(() => {
@@ -297,4 +310,4 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
       )}
     </div>
   );
-}
+});

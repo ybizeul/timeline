@@ -336,10 +336,12 @@ export default function App() {
               onToggleCardControls={() => {
                 setShowCardControls(p => {
                   const next = !p;
-                  try { localStorage.setItem('orgchart_show_card_controls', String(next)); } catch {}
+                  try { localStorage.setItem('orgchart_show_card_controls', String(next)); } catch {};
                   return next;
                 });
               }}
+              people={people}
+              onSelectPerson={(id) => { orgChartRef.current?.selectAndCenter(id); }}
             />
             <OrgChart
               ref={orgChartRef}
