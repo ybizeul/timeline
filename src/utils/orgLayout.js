@@ -117,8 +117,16 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
       computeWidth(cid);
     }
 
-    // Check for staggered layout: 4+ children, all are leaves (subtreeWidth === CARD_W)
-    if (validChildren.length >= 4 && validChildren.every(cid => subtreeWidth.get(cid) === CARD_W)) {
+    // Check for staggered layout: 4+ children, all are true leaves (no children of their own)
+    if (validChildren.length >= 4 && validChildren.every(cid => {
+      const isChildCollapsed = collapsedIds && collapsedIds.has(cid);
+      if (isChildCollapsed) return true;
+      const grandchildren = childrenMap.get(cid) || [];
+      const validGrandchildren = focusedId
+        ? grandchildren.filter(gc => isDescendantOf(gc, focusedId, childrenMap, personMap))
+        : grandchildren;
+      return validGrandchildren.length === 0;
+    })) {
       staggeredParents.add(id);
       const pitch = CARD_W + H_GAP;
       const r1 = Math.ceil(validChildren.length / 2);
@@ -165,6 +173,28 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
     totalRootsWidth += computeWidth(roots[i]);
   }
 
+  // Determine which groups are actually visible (≥2 members positioned)
+  const visibleGroupIds = new Set();
+  if (groups) {
+    for (const g of groups) {
+      let count = 0;
+      for (const pid of g.personIds) {
+        if (visited.has(pid)) count++;
+        if (count >= 2) { visibleGroupIds.add(g.id); break; }
+      }
+    }
+  }
+
+  // Check if a person is in at least one visible group
+  function inVisibleGroup(pid) {
+    const gs = personGroups.get(pid);
+    if (!gs) return false;
+    for (const gid of gs) {
+      if (visibleGroupIds.has(gid)) return true;
+    }
+    return false;
+  }
+
   // Position nodes top-down
   const nodes = [];
   const nodePositions = new Map(); // id → {x, y}
@@ -198,14 +228,14 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
       // Row 1: cards at leftEdge, leftEdge+pitch, leftEdge+2*pitch, ...
       for (let i = 0; i < row1.length; i++) {
         const childCx = leftEdge + CARD_W / 2 + i * pitch;
-        const gOff = personGroups.has(row1[i]) ? GROUP_TITLE_SPACE : 0;
+        const gOff = inVisibleGroup(row1[i]) ? GROUP_TITLE_SPACE : 0;
         positionSubtree(row1[i], childCx, childY + gOff);
       }
 
       // Row 2: offset by half a pitch so cards sit between row 1 cards
       for (let i = 0; i < row2.length; i++) {
         const childCx = leftEdge + pitch / 2 + CARD_W / 2 + i * pitch;
-        const gOff = personGroups.has(row2[i]) ? GROUP_TITLE_SPACE : 0;
+        const gOff = inVisibleGroup(row2[i]) ? GROUP_TITLE_SPACE : 0;
         positionSubtree(row2[i], childCx, childY2 + gOff);
       }
       return;
@@ -225,7 +255,7 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
       const childId = validChildren[i];
       const childW = subtreeWidth.get(childId);
       const childCx = startX + childW / 2;
-      const gOff = personGroups.has(childId) ? GROUP_TITLE_SPACE : 0;
+      const gOff = inVisibleGroup(childId) ? GROUP_TITLE_SPACE : 0;
       positionSubtree(childId, childCx, childY + gOff);
       startX += childW;
       if (i < validChildren.length - 1) {
