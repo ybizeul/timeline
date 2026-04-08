@@ -15,6 +15,7 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef(null); // { lastX, lastY, startX, startY, hasMoved, axis: null|'pan'|'zoom' }
   const wasRecentlyDraggingRef = useRef(false);
+  const pinchRef = useRef(null);
 
   // ResizeObserver
   useEffect(() => {
@@ -45,6 +46,47 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
     return () => el.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
+  // Touch pinch-to-zoom + two-finger pan
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const dist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    const center = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
+
+    const onTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        dragRef.current = null;
+        setIsDragging(false);
+        pinchRef.current = { dist: dist(e.touches[0], e.touches[1]), center: center(e.touches[0], e.touches[1]) };
+      }
+    };
+    const onTouchMove = (e) => {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault();
+        const d = dist(e.touches[0], e.touches[1]);
+        const c = center(e.touches[0], e.touches[1]);
+        const rect = el.getBoundingClientRect();
+        const anchorX = c.x - rect.left;
+        onWheel(anchorX, pinchRef.current.dist / d);
+        onPan(-(c.x - pinchRef.current.center.x));
+        pinchRef.current = { dist: d, center: c };
+      }
+    };
+    const onTouchEnd = () => { pinchRef.current = null; };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchcancel', onTouchEnd);
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [onWheel, onPan]);
+
   // Pointer drag handlers — threshold-based so clicks on events still fire
   // Axis-locked: horizontal → pan, vertical → zoom
   const handlePointerDown = useCallback((e) => {
@@ -60,7 +102,7 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
   }, []);
 
   const handlePointerMove = useCallback((e) => {
-    if (!dragRef.current) return;
+    if (!dragRef.current || pinchRef.current) return;
     const d = dragRef.current;
     const dx = e.clientX - d.lastX;
     const dy = e.clientY - d.lastY;

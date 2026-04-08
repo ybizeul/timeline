@@ -11,6 +11,7 @@ const DRAG_THRESHOLD = 4;
 export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup }) {
   const wrapperRef = useRef(null);
   const dragRef = useRef(null);
+  const pinchRef = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [selectedIds, setSelectedIds] = useState(new Set());
 
@@ -77,7 +78,7 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
 
   // Pointer drag for panning — use window listeners so clicks on cards still propagate
   const handlePointerDown = useCallback((e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || pinchRef.current) return;
     e.preventDefault();
     dragRef.current = { startX: e.clientX, startY: e.clientY, moved: false };
 
@@ -123,6 +124,47 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
+
+  // Touch pinch-to-zoom + two-finger pan
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const dist = (a, b) => Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    const center = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
+
+    const onTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        dragRef.current = null;
+        pinchRef.current = { dist: dist(e.touches[0], e.touches[1]), center: center(e.touches[0], e.touches[1]) };
+      }
+    };
+    const onTouchMove = (e) => {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault();
+        const d = dist(e.touches[0], e.touches[1]);
+        const c = center(e.touches[0], e.touches[1]);
+        const rect = el.getBoundingClientRect();
+        const anchorX = c.x - rect.left;
+        const anchorY = c.y - rect.top;
+        onZoomAt(anchorX, anchorY, d / pinchRef.current.dist);
+        onPan(c.x - pinchRef.current.center.x, c.y - pinchRef.current.center.y);
+        pinchRef.current = { dist: d, center: c };
+      }
+    };
+    const onTouchEnd = () => { pinchRef.current = null; };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchcancel', onTouchEnd);
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [onZoomAt, onPan]);
 
   const handleCardClick = useCallback((person, e) => {
     // Only fire click if we didn't drag
