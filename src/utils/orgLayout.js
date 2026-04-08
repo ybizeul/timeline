@@ -10,6 +10,7 @@ const V_GAP = 60;
 const GROUP_EXTRA_GAP = 24; // extra spacing between siblings in different groups
 const STAGGER_V_GAP = 20; // vertical gap between two staggered lanes of leaf children
 const GROUP_TITLE_SPACE = 20; // extra vertical space above grouped cards for group title
+const GROUP_FRAME_PAD = 24; // horizontal padding of group overlay frames
 
 export { CARD_W, CARD_H };
 
@@ -89,9 +90,37 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
   }
 
   // Compute subtree widths bottom-up
+  // Each subtree also gets a contour: [{left, right}] per depth relative to node center.
+  // This allows leaf siblings to be placed closer to subtrees (no overlap at shared depths).
   const subtreeWidth = new Map();
+  const subtreeContour = new Map(); // id → [{left,right}, ...] per depth
+  const subtreeContourBase = new Map(); // id → [{left,right}, ...] per depth (before group frame expansion)
+  const childLayoutOffsets = new Map(); // id → number[] (child center offsets relative to parent center)
+  const subtreeGroupMemberX = new Map(); // id → [{groupId, relX, relDepth}] — group members in subtree with position relative to this node
   const visited = new Set();
   const staggeredParents = new Set(); // parents whose leaf children use two-row layout
+
+  // Merge right contour of all placed children so far, computing minimum separation
+  function contourSeparation(mergedRight, childContour, gap) {
+    let minSep = 0;
+    const shared = Math.min(mergedRight.length, childContour.length);
+    for (let d = 0; d < shared; d++) {
+      const needed = mergedRight[d] + gap - childContour[d].left;
+      if (needed > minSep) minSep = needed;
+    }
+    return minSep;
+  }
+
+  function mergeRightContour(mergedRight, childContour, offset) {
+    const result = [];
+    const len = Math.max(mergedRight.length, childContour.length);
+    for (let d = 0; d < len; d++) {
+      const mr = d < mergedRight.length ? mergedRight[d] : -Infinity;
+      const cr = d < childContour.length ? childContour[d].right + offset : -Infinity;
+      result.push(Math.max(mr, cr));
+    }
+    return result;
+  }
 
   function computeWidth(id) {
     if (visited.has(id)) return CARD_W; // Cycle guard
@@ -109,6 +138,13 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
 
     if (validChildren.length === 0) {
       subtreeWidth.set(id, CARD_W);
+      subtreeContour.set(id, [{ left: -CARD_W / 2, right: CARD_W / 2 }]);
+      subtreeContourBase.set(id, [{ left: -CARD_W / 2, right: CARD_W / 2 }]);
+      // Track group membership for this leaf
+      const leafGps = [];
+      const leafGs = personGroups.get(id);
+      if (leafGs) { for (const gid of leafGs) leafGps.push({ groupId: gid, relX: 0, relDepth: 0 }); }
+      subtreeGroupMemberX.set(id, leafGps);
       return CARD_W;
     }
 
@@ -135,17 +171,134 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
       const row2Right = pitch / 2 + (r2 - 1) * pitch + CARD_W;
       const w = Math.max(CARD_W, Math.max(row1Right, row2Right));
       subtreeWidth.set(id, w);
+      // Conservative contour: full width at two child levels (two stagger rows)
+      subtreeContour.set(id, [
+        { left: -CARD_W / 2, right: CARD_W / 2 },
+        { left: -w / 2, right: w / 2 },
+        { left: -w / 2, right: w / 2 },
+      ]);
+      subtreeContourBase.set(id, [
+        { left: -CARD_W / 2, right: CARD_W / 2 },
+        { left: -w / 2, right: w / 2 },
+        { left: -w / 2, right: w / 2 },
+      ]);
+      // Track group membership for staggered children
+      const stagGps = [];
+      const stagGs = personGroups.get(id);
+      if (stagGs) { for (const gid of stagGs) stagGps.push({ groupId: gid, relX: 0, relDepth: 0 }); }
+      for (let i = 0; i < validChildren.length; i++) {
+        const cgs = personGroups.get(validChildren[i]);
+        if (cgs) {
+          let cx;
+          if (i % 2 === 0) cx = (i / 2) * pitch + CARD_W / 2 - w / 2;
+          else cx = pitch / 2 + Math.floor(i / 2) * pitch + CARD_W / 2 - w / 2;
+          for (const gid of cgs) stagGps.push({ groupId: gid, relX: cx, relDepth: 1 });
+        }
+      }
+      subtreeGroupMemberX.set(id, stagGps);
       return w;
     }
 
-    let totalW = 0;
-    for (let i = 0; i < validChildren.length; i++) {
-      if (i > 0) totalW += gapBetween(validChildren[i - 1], validChildren[i]);
-      totalW += subtreeWidth.get(validChildren[i]);
+    // Contour-based child placement
+    const offsets = [0];
+    let mRight = subtreeContour.get(validChildren[0]).map(e => e.right);
+    let mRightBase = subtreeContourBase.get(validChildren[0]).map(e => e.right);
+
+    for (let i = 1; i < validChildren.length; i++) {
+      const gap = gapBetween(validChildren[i - 1], validChildren[i]);
+      // If siblings share a group, use base contours (without group frame expansion)
+      // so same-group siblings are placed close together inside the shared frame
+      const shared = shareGroup(validChildren[i - 1], validChildren[i]);
+      const useRight = shared ? mRightBase : mRight;
+      const cc = shared ? subtreeContourBase.get(validChildren[i]) : subtreeContour.get(validChildren[i]);
+      const sep = contourSeparation(useRight, cc, gap);
+      offsets.push(sep);
+      mRight = mergeRightContour(mRight, subtreeContour.get(validChildren[i]), sep);
+      mRightBase = mergeRightContour(mRightBase, subtreeContourBase.get(validChildren[i]), sep);
     }
-    const w = Math.max(CARD_W, totalW);
-    subtreeWidth.set(id, w);
-    return w;
+
+    // Center children: midpoint of first and last child at 0
+    const center = (offsets[0] + offsets[offsets.length - 1]) / 2;
+    for (let i = 0; i < offsets.length; i++) offsets[i] -= center;
+
+    // Build group member position tracking (merge children's data + self)
+    const gps = [];
+    const selfGs = personGroups.get(id);
+    if (selfGs) { for (const gid of selfGs) gps.push({ groupId: gid, relX: 0, relDepth: 0 }); }
+    for (let i = 0; i < validChildren.length; i++) {
+      const cps = subtreeGroupMemberX.get(validChildren[i]) || [];
+      for (const cp of cps) gps.push({ groupId: cp.groupId, relX: cp.relX + offsets[i], relDepth: cp.relDepth + 1 });
+    }
+    subtreeGroupMemberX.set(id, gps);
+
+    // Build merged child contour
+    const mergedChildLevels = [];
+    for (let i = 0; i < validChildren.length; i++) {
+      const cc = subtreeContour.get(validChildren[i]);
+      for (let d = 0; d < cc.length; d++) {
+        const l = cc[d].left + offsets[i];
+        const r = cc[d].right + offsets[i];
+        if (d >= mergedChildLevels.length) {
+          mergedChildLevels.push({ left: l, right: r });
+        } else {
+          mergedChildLevels[d] = {
+            left: Math.min(mergedChildLevels[d].left, l),
+            right: Math.max(mergedChildLevels[d].right, r),
+          };
+        }
+      }
+    }
+
+    // This node's contour: depth 0 is itself, depth 1+ are children's merged contour
+    const contour = [{ left: -CARD_W / 2, right: CARD_W / 2 }];
+    for (const entry of mergedChildLevels) contour.push(entry);
+
+    // Save base contour before group frame expansion
+    const baseContour = contour.map(c => ({ ...c }));
+
+    // Expand contour only at depth levels where the group frame actually exists.
+    // Uses subtreeGroupMemberX to find ALL group members in this subtree
+    // (including the node itself and deep descendants), not just direct children.
+    if (gps.length > 0) {
+      const byGroup = new Map();
+      for (const p of gps) {
+        if (!byGroup.has(p.groupId)) byGroup.set(p.groupId, []);
+        byGroup.get(p.groupId).push(p);
+      }
+      for (const [, members] of byGroup) {
+        if (members.length < 2) continue;
+        let minX = Infinity, maxX = -Infinity;
+        let minDepth = Infinity, maxDepth = -Infinity;
+        for (const m of members) {
+          minX = Math.min(minX, m.relX);
+          maxX = Math.max(maxX, m.relX);
+          minDepth = Math.min(minDepth, m.relDepth);
+          maxDepth = Math.max(maxDepth, m.relDepth);
+        }
+        const frameLeft = minX - CARD_W / 2 - GROUP_FRAME_PAD;
+        const frameRight = maxX + CARD_W / 2 + GROUP_FRAME_PAD;
+        // Only expand contour at depths the group frame spans
+        for (let d = minDepth; d <= maxDepth && d < contour.length; d++) {
+          contour[d] = {
+            left: Math.min(contour[d].left, frameLeft),
+            right: Math.max(contour[d].right, frameRight),
+          };
+        }
+      }
+    }
+
+    subtreeContour.set(id, contour);
+    subtreeContourBase.set(id, baseContour);
+
+    // subtreeWidth: max extent at any depth
+    let maxLeft = CARD_W / 2, maxRight = CARD_W / 2;
+    for (const entry of contour) {
+      maxLeft = Math.max(maxLeft, -entry.left);
+      maxRight = Math.max(maxRight, entry.right);
+    }
+    subtreeWidth.set(id, maxLeft + maxRight);
+    childLayoutOffsets.set(id, offsets);
+    return maxLeft + maxRight;
   }
 
   // Check if childId is in the subtree rooted at rootId
@@ -167,10 +320,8 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
   }
 
   // Compute widths for all roots
-  let totalRootsWidth = 0;
   for (let i = 0; i < roots.length; i++) {
-    if (i > 0) totalRootsWidth += gapBetween(roots[i - 1], roots[i]);
-    totalRootsWidth += computeWidth(roots[i]);
+    computeWidth(roots[i]);
   }
 
   // Determine which groups are actually visible (≥2 members positioned)
@@ -241,111 +392,37 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
       return;
     }
 
-    // Normal single-row layout
-    // Compute total children width
-    let totalChildW = 0;
-    for (let i = 0; i < validChildren.length; i++) {
-      if (i > 0) totalChildW += gapBetween(validChildren[i - 1], validChildren[i]);
-      totalChildW += subtreeWidth.get(validChildren[i]);
-    }
-
-    let startX = cx - totalChildW / 2;
-
-    for (let i = 0; i < validChildren.length; i++) {
-      const childId = validChildren[i];
-      const childW = subtreeWidth.get(childId);
-      const childCx = startX + childW / 2;
-      const gOff = inVisibleGroup(childId) ? GROUP_TITLE_SPACE : 0;
-      positionSubtree(childId, childCx, childY + gOff);
-      startX += childW;
-      if (i < validChildren.length - 1) {
-        startX += gapBetween(childId, validChildren[i + 1]);
+    // Normal single-row layout — use pre-computed contour offsets
+    const offsets = childLayoutOffsets.get(id);
+    if (offsets) {
+      for (let i = 0; i < validChildren.length; i++) {
+        const childCx = cx + offsets[i];
+        const gOff = inVisibleGroup(validChildren[i]) ? GROUP_TITLE_SPACE : 0;
+        positionSubtree(validChildren[i], childCx, childY + gOff);
       }
     }
   }
 
-  // Position all roots side by side
-  let startX = -totalRootsWidth / 2;
-  for (let i = 0; i < roots.length; i++) {
-    const rootId = roots[i];
-    const rootW = subtreeWidth.get(rootId);
-    const cx = startX + rootW / 2;
-    positionSubtree(rootId, cx, 0);
-    startX += rootW;
-    if (i < roots.length - 1) {
-      startX += gapBetween(rootId, roots[i + 1]);
-    }
-  }
-
-  // Post-layout: ensure group frames of different root subtrees don't overlap
-  const GROUP_FRAME_PAD = 24;
-  if (roots.length > 1 && groups && groups.length > 0) {
-    // Map each positioned node to its root by walking up reportsTo
-    const rootSet = new Set(roots);
-    const nodeRoot = new Map();
-    for (const n of nodes) {
-      let cur = n.person.id;
-      const seen = new Set();
-      while (!rootSet.has(cur)) {
-        seen.add(cur);
-        const p = personMap.get(cur);
-        if (!p?.reportsTo || seen.has(p.reportsTo)) break;
-        cur = p.reportsTo;
-      }
-      nodeRoot.set(n.person.id, cur);
-    }
-
-    // Quick lookup: rootId → index in roots array
-    const rootIdx = new Map();
-    roots.forEach((r, i) => rootIdx.set(r, i));
-
-    // Build node lookup
-    const nodeById = new Map();
-    for (const n of nodes) nodeById.set(n.person.id, n);
-
-    // Compute visual extent of a root subtree (cards + group frame padding)
-    function rootExtent(rid) {
-      let minX = Infinity, maxX = -Infinity;
-      for (const n of nodes) {
-        if (nodeRoot.get(n.person.id) !== rid) continue;
-        minX = Math.min(minX, n.x);
-        maxX = Math.max(maxX, n.x + CARD_W);
-      }
-      for (const g of groups) {
-        let gMinX = Infinity, gMaxX = -Infinity, cnt = 0;
-        for (const pid of g.personIds) {
-          const nd = nodeById.get(pid);
-          if (!nd || nodeRoot.get(pid) !== rid) continue;
-          gMinX = Math.min(gMinX, nd.x);
-          gMaxX = Math.max(gMaxX, nd.x + CARD_W);
-          cnt++;
-        }
-        if (cnt >= 2) {
-          minX = Math.min(minX, gMinX - GROUP_FRAME_PAD);
-          maxX = Math.max(maxX, gMaxX + GROUP_FRAME_PAD);
-        }
-      }
-      return { minX, maxX };
-    }
-
-    // Check adjacent root subtrees and shift right if frames overlap
+  // Position all roots side by side using contour merging
+  if (roots.length === 1) {
+    positionSubtree(roots[0], 0, 0);
+  } else {
+    const rootOffsets = [0];
+    let mRight = subtreeContour.get(roots[0]).map(e => e.right);
+    let mRightBase = subtreeContourBase.get(roots[0]).map(e => e.right);
     for (let i = 1; i < roots.length; i++) {
-      const prev = rootExtent(roots[i - 1]);
-      const curr = rootExtent(roots[i]);
-      const overlap = prev.maxX + H_GAP - curr.minX;
-      if (overlap > 0) {
-        // Shift this root and all roots to its right
-        for (const n of nodes) {
-          if ((rootIdx.get(nodeRoot.get(n.person.id)) ?? -1) >= i) {
-            n.x += overlap;
-          }
-        }
-        for (const [nid, pos] of nodePositions) {
-          if ((rootIdx.get(nodeRoot.get(nid)) ?? -1) >= i) {
-            pos.x += overlap;
-          }
-        }
-      }
+      const gap = gapBetween(roots[i - 1], roots[i]);
+      const shared = shareGroup(roots[i - 1], roots[i]);
+      const useRight = shared ? mRightBase : mRight;
+      const rc = shared ? subtreeContourBase.get(roots[i]) : subtreeContour.get(roots[i]);
+      const sep = contourSeparation(useRight, rc, gap);
+      rootOffsets.push(sep);
+      mRight = mergeRightContour(mRight, subtreeContour.get(roots[i]), sep);
+      mRightBase = mergeRightContour(mRightBase, subtreeContourBase.get(roots[i]), sep);
+    }
+    const rootCenter = (rootOffsets[0] + rootOffsets[rootOffsets.length - 1]) / 2;
+    for (let i = 0; i < roots.length; i++) {
+      positionSubtree(roots[i], rootOffsets[i] - rootCenter, 0);
     }
   }
 

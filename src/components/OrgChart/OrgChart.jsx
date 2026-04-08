@@ -204,9 +204,49 @@ export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, 
     };
   }, [onZoomAt, onPan]);
 
+  // Build children map for descendant lookups
+  const childrenMap = useMemo(() => {
+    const map = new Map();
+    const personIds = new Set(people.map(p => p.id));
+    for (const p of people) {
+      if (!map.has(p.id)) map.set(p.id, []);
+      if (p.reportsTo && personIds.has(p.reportsTo)) {
+        if (!map.has(p.reportsTo)) map.set(p.reportsTo, []);
+        map.get(p.reportsTo).push(p.id);
+      }
+    }
+    return map;
+  }, [people]);
+
   const handleCardClick = useCallback((person, e) => {
     // Only fire click if we didn't drag
     if (dragRef.current?.moved) return;
+
+    // Cmd/Ctrl+click: select person and all descendants
+    if (e?.metaKey || e?.ctrlKey) {
+      const descendants = new Set();
+      const stack = [person.id];
+      while (stack.length > 0) {
+        const id = stack.pop();
+        descendants.add(id);
+        const children = childrenMap.get(id) || [];
+        for (const cid of children) {
+          if (!descendants.has(cid)) stack.push(cid);
+        }
+      }
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        // Toggle: if person already selected, deselect the whole subtree
+        if (next.has(person.id)) {
+          for (const id of descendants) next.delete(id);
+        } else {
+          for (const id of descendants) next.add(id);
+        }
+        return next;
+      });
+      return;
+    }
+
     // Single click toggles selection
     setSelectedIds(prev => {
       const next = new Set(e?.shiftKey ? prev : []);
@@ -214,7 +254,7 @@ export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, 
       else next.add(person.id);
       return next;
     });
-  }, []);
+  }, [childrenMap]);
 
   const handleCardDoubleClick = useCallback((person) => {
     setSelectedIds(new Set());
