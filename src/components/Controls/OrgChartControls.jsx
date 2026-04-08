@@ -39,6 +39,7 @@ function ToolbarSearch({ people, onSelect }) {
 
   const handleKeyDown = (e) => {
     if (e.key === 'Escape') { setIsOpen(false); setMobileOpen(false); e.stopPropagation(); }
+    if (e.key === 'Enter' && filtered.length > 0) { handleSelect(filtered[0]); }
   };
 
   const toggleMobile = () => {
