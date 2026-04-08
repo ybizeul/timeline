@@ -113,28 +113,27 @@ export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, o
 
           <div className="tl-menu__divider" />
 
-          <div className="tl-menu__io-row">
-            <button
-              className="tl-menu__io-btn"
-              onClick={() => { exportTimeline(activeId); setIsOpen(false); }}
-            >
-              Export
-            </button>
-            <button
-              className="tl-menu__io-btn"
-              disabled={!hasEvents}
-              onClick={() => { onExportSvg(); setIsOpen(false); }}
-              title={hasEvents ? 'Export timeline as SVG image' : 'No events to export'}
-            >
-              Export SVG
-            </button>
-            <button
-              className="tl-menu__io-btn"
-              onClick={() => fileRef.current?.click()}
-            >
-              Import
-            </button>
-          </div>
+          <div className="tl-menu__section-label">Export / Import</div>
+          <button
+            className="tl-menu__item"
+            onClick={() => { exportTimeline(activeId); setIsOpen(false); }}
+          >
+            Export JSON
+          </button>
+          <button
+            className="tl-menu__item"
+            disabled={!hasEvents}
+            onClick={() => { onExportSvg(); setIsOpen(false); }}
+            title={hasEvents ? 'Export timeline as SVG image' : 'No events to export'}
+          >
+            Export SVG
+          </button>
+          <button
+            className="tl-menu__item"
+            onClick={() => fileRef.current?.click()}
+          >
+            Import
+          </button>
           <input
             ref={fileRef}
             type="file"

@@ -106,36 +106,35 @@ export function OrgChartMenu({ charts, activeId, onSwitch, onAdd, onRename, onDe
 
           <div className="tl-menu__divider" />
 
-          <div className="tl-menu__io-row">
-            <button
-              className="tl-menu__io-btn"
-              onClick={() => { exportOrgChart(activeId); setIsOpen(false); }}
-            >
-              Export
-            </button>
-            <button
-              className="tl-menu__io-btn"
-              disabled={!hasPeople}
-              onClick={() => { onExportSvg(); setIsOpen(false); }}
-              title={hasPeople ? 'Export org chart as SVG image' : 'No people to export'}
-            >
-              Export SVG
-            </button>
-            <button
-              className="tl-menu__io-btn"
-              disabled={!hasPeople}
-              onClick={() => { onExportPng(); setIsOpen(false); }}
-              title={hasPeople ? 'Export org chart as PNG image' : 'No people to export'}
-            >
-              Export PNG
-            </button>
-            <button
-              className="tl-menu__io-btn"
-              onClick={() => fileRef.current?.click()}
-            >
-              Import
-            </button>
-          </div>
+          <div className="tl-menu__section-label">Export / Import</div>
+          <button
+            className="tl-menu__item"
+            onClick={() => { exportOrgChart(activeId); setIsOpen(false); }}
+          >
+            Export JSON
+          </button>
+          <button
+            className="tl-menu__item"
+            disabled={!hasPeople}
+            onClick={() => { onExportSvg(); setIsOpen(false); }}
+            title={hasPeople ? 'Export org chart as SVG image' : 'No people to export'}
+          >
+            Export SVG
+          </button>
+          <button
+            className="tl-menu__item"
+            disabled={!hasPeople}
+            onClick={() => { onExportPng(); setIsOpen(false); }}
+            title={hasPeople ? 'Export org chart as PNG image' : 'No people to export'}
+          >
+            Export PNG
+          </button>
+          <button
+            className="tl-menu__item"
+            onClick={() => fileRef.current?.click()}
+          >
+            Import
+          </button>
           <input
             ref={fileRef}
             type="file"
