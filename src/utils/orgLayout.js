@@ -247,6 +247,78 @@ export function computeOrgLayout(people, focusedId = null, collapsedIds = null, 
     }
   }
 
+  // Post-layout: ensure group frames of different root subtrees don't overlap
+  const GROUP_FRAME_PAD = 24;
+  if (roots.length > 1 && groups && groups.length > 0) {
+    // Map each positioned node to its root by walking up reportsTo
+    const rootSet = new Set(roots);
+    const nodeRoot = new Map();
+    for (const n of nodes) {
+      let cur = n.person.id;
+      const seen = new Set();
+      while (!rootSet.has(cur)) {
+        seen.add(cur);
+        const p = personMap.get(cur);
+        if (!p?.reportsTo || seen.has(p.reportsTo)) break;
+        cur = p.reportsTo;
+      }
+      nodeRoot.set(n.person.id, cur);
+    }
+
+    // Quick lookup: rootId → index in roots array
+    const rootIdx = new Map();
+    roots.forEach((r, i) => rootIdx.set(r, i));
+
+    // Build node lookup
+    const nodeById = new Map();
+    for (const n of nodes) nodeById.set(n.person.id, n);
+
+    // Compute visual extent of a root subtree (cards + group frame padding)
+    function rootExtent(rid) {
+      let minX = Infinity, maxX = -Infinity;
+      for (const n of nodes) {
+        if (nodeRoot.get(n.person.id) !== rid) continue;
+        minX = Math.min(minX, n.x);
+        maxX = Math.max(maxX, n.x + CARD_W);
+      }
+      for (const g of groups) {
+        let gMinX = Infinity, gMaxX = -Infinity, cnt = 0;
+        for (const pid of g.personIds) {
+          const nd = nodeById.get(pid);
+          if (!nd || nodeRoot.get(pid) !== rid) continue;
+          gMinX = Math.min(gMinX, nd.x);
+          gMaxX = Math.max(gMaxX, nd.x + CARD_W);
+          cnt++;
+        }
+        if (cnt >= 2) {
+          minX = Math.min(minX, gMinX - GROUP_FRAME_PAD);
+          maxX = Math.max(maxX, gMaxX + GROUP_FRAME_PAD);
+        }
+      }
+      return { minX, maxX };
+    }
+
+    // Check adjacent root subtrees and shift right if frames overlap
+    for (let i = 1; i < roots.length; i++) {
+      const prev = rootExtent(roots[i - 1]);
+      const curr = rootExtent(roots[i]);
+      const overlap = prev.maxX + H_GAP - curr.minX;
+      if (overlap > 0) {
+        // Shift this root and all roots to its right
+        for (const n of nodes) {
+          if ((rootIdx.get(nodeRoot.get(n.person.id)) ?? -1) >= i) {
+            n.x += overlap;
+          }
+        }
+        for (const [nid, pos] of nodePositions) {
+          if ((rootIdx.get(nodeRoot.get(nid)) ?? -1) >= i) {
+            pos.x += overlap;
+          }
+        }
+      }
+    }
+  }
+
   // Build edges
   const edges = [];
   const positionedIds = new Set(nodes.map(n => n.person.id));
