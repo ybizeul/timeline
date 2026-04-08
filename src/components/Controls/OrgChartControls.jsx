@@ -2,6 +2,10 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { OrgChartMenu } from './OrgChartMenu';
 import './Controls.css';
 
+const SearchIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6-6"/></svg>
+);
+
 function ToolbarSearch({ people, onSelect }) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -56,9 +60,9 @@ function ToolbarSearch({ people, onSelect }) {
         className="ctrl-btn toolbar-search__mobile-btn"
         onClick={toggleMobile}
         title="Search people"
-      >🔍</button>
+      ><SearchIcon /></button>
       <div className={`toolbar-search__field${mobileOpen ? ' is-mobile-open' : ''}`}>
-        <span className="toolbar-search__icon">🔍</span>
+        <span className="toolbar-search__icon"><SearchIcon /></span>
         <input
           ref={inputRef}
           type="text"
