@@ -7,11 +7,14 @@ import './OrgChart.css';
 
 const ZOOM_SENSITIVITY = 0.003;
 const DRAG_THRESHOLD = 4;
+const INERTIA_FRICTION = 0.92;
+const INERTIA_MIN_V = 0.5;
 
 export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup }) {
   const wrapperRef = useRef(null);
   const dragRef = useRef(null);
   const pinchRef = useRef(null);
+  const inertiaRef = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [selectedIds, setSelectedIds] = useState(new Set());
 
@@ -80,7 +83,9 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
   const handlePointerDown = useCallback((e) => {
     if (e.button !== 0 || pinchRef.current) return;
     e.preventDefault();
-    dragRef.current = { startX: e.clientX, startY: e.clientY, moved: false };
+    // Cancel any running inertia animation
+    if (inertiaRef.current) { cancelAnimationFrame(inertiaRef.current.raf); inertiaRef.current = null; }
+    dragRef.current = { startX: e.clientX, startY: e.clientY, moved: false, lastTime: Date.now(), vx: 0, vy: 0 };
 
     const onMove = (ev) => {
       if (!dragRef.current) return;
@@ -90,12 +95,30 @@ export function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonC
       dragRef.current.moved = true;
       dragRef.current.startX = ev.clientX;
       dragRef.current.startY = ev.clientY;
+      // Track velocity for inertia
+      const now = Date.now();
+      const dt = now - dragRef.current.lastTime;
+      if (dt > 0) { dragRef.current.vx = dx / dt; dragRef.current.vy = dy / dt; }
+      dragRef.current.lastTime = now;
       onPan(dx, dy);
     };
 
     const onUp = () => {
-      // Keep dragRef.current alive briefly so handleCardClick can read .moved
-      const wasDrag = dragRef.current?.moved;
+      // Start inertia if we were dragging with enough velocity
+      const d = dragRef.current;
+      if (d?.moved) {
+        let vx = d.vx * 16, vy = d.vy * 16; // px/ms → px/frame
+        if (Math.abs(vx) > INERTIA_MIN_V || Math.abs(vy) > INERTIA_MIN_V) {
+          const tick = () => {
+            vx *= INERTIA_FRICTION;
+            vy *= INERTIA_FRICTION;
+            if (Math.abs(vx) < INERTIA_MIN_V && Math.abs(vy) < INERTIA_MIN_V) { inertiaRef.current = null; return; }
+            onPan(vx, vy);
+            inertiaRef.current = { raf: requestAnimationFrame(tick) };
+          };
+          inertiaRef.current = { raf: requestAnimationFrame(tick) };
+        }
+      }
       // Clear after a microtask so onClick (which fires after pointerup) can still see it
       setTimeout(() => { dragRef.current = null; }, 0);
       window.removeEventListener('pointermove', onMove);

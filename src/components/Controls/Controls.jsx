@@ -63,9 +63,11 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
         <div className="controls__sep" />
       </div>
 
-      <button className="ctrl-btn" onClick={onZoomIn} title="Zoom in">+</button>
-      <button className="ctrl-btn" onClick={onZoomOut} title="Zoom out">−</button>
-      <div className="controls__sep" />
+      <div className="controls__secondary">
+        <button className="ctrl-btn" onClick={onZoomIn} title="Zoom in">+</button>
+        <button className="ctrl-btn" onClick={onZoomOut} title="Zoom out">−</button>
+        <div className="controls__sep" />
+      </div>
       <button className="ctrl-btn ctrl-btn--text" onClick={onToday} title="Go to today">Today</button>
       <div className="controls__sep" />
       <div className="controls__secondary">

@@ -36,9 +36,11 @@ export function OrgChartControls({
       />
       <div className="controls__sep" />
 
-      <button className="ctrl-btn" onClick={onZoomIn} title="Zoom in">+</button>
-      <button className="ctrl-btn" onClick={onZoomOut} title="Zoom out">−</button>
-      <div className="controls__sep" />
+      <div className="controls__secondary">
+        <button className="ctrl-btn" onClick={onZoomIn} title="Zoom in">+</button>
+        <button className="ctrl-btn" onClick={onZoomOut} title="Zoom out">−</button>
+        <div className="controls__sep" />
+      </div>
       <button className="ctrl-btn ctrl-btn--text" onClick={onFitToScreen} title="Fit to screen">Fit</button>
 
       <div className="controls__secondary">

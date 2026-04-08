@@ -7,6 +7,8 @@ import './Timeline.css';
 const ZOOM_SENSITIVITY = 0.001;
 const DRAG_ZOOM_SENSITIVITY = 0.006;
 const DRAG_THRESHOLD = 4;
+const INERTIA_FRICTION = 0.92;
+const INERTIA_MIN_V = 0.5;
 
 export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEventClick, showToday, showWeekends, height }) {
   const { viewStart, viewEnd } = viewport;
@@ -16,6 +18,7 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
   const dragRef = useRef(null); // { lastX, lastY, startX, startY, hasMoved, axis: null|'pan'|'zoom' }
   const wasRecentlyDraggingRef = useRef(false);
   const pinchRef = useRef(null);
+  const inertiaRef = useRef(null);  // { vx, raf }
 
   // ResizeObserver
   useEffect(() => {
@@ -91,6 +94,8 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
   // Axis-locked: horizontal → pan, vertical → zoom
   const handlePointerDown = useCallback((e) => {
     if (e.button !== 0) return;
+    // Cancel any running inertia animation
+    if (inertiaRef.current) { cancelAnimationFrame(inertiaRef.current.raf); inertiaRef.current = null; }
     const rect = wrapperRef.current.getBoundingClientRect();
     dragRef.current = {
       pointerId: e.pointerId,
@@ -98,6 +103,7 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
       startX: e.clientX, startY: e.clientY,
       cursorX: e.clientX - rect.left,
       hasMoved: false, axis: null,
+      lastTime: Date.now(), vx: 0,
     };
   }, []);
 
@@ -122,6 +128,11 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
     if (d.hasMoved) {
       if (d.axis === 'pan') {
         onPan(-dx);
+        // Track velocity for inertia
+        const now = Date.now();
+        const dt = now - d.lastTime;
+        if (dt > 0) { d.vx = -dx / dt; }
+        d.lastTime = now;
       } else {
         // drag up (negative dy) = zoom in (factor < 1)
         const factor = 1 + dy * DRAG_ZOOM_SENSITIVITY;
@@ -133,11 +144,23 @@ export function Timeline({ viewport, events, setSvgWidth, onWheel, onPan, onEven
   }, [onPan, onWheel]);
 
   const handlePointerUp = useCallback(() => {
+    const d = dragRef.current;
+    // Start inertia if we were panning with enough velocity
+    if (d?.hasMoved && d.axis === 'pan' && Math.abs(d.vx) > INERTIA_MIN_V / 1000) {
+      let vx = d.vx * 16; // convert from px/ms to px/frame (~16ms)
+      const tick = () => {
+        vx *= INERTIA_FRICTION;
+        if (Math.abs(vx) < INERTIA_MIN_V) { inertiaRef.current = null; return; }
+        onPan(vx);
+        inertiaRef.current = { raf: requestAnimationFrame(tick) };
+      };
+      inertiaRef.current = { raf: requestAnimationFrame(tick) };
+    }
     dragRef.current = null;
     setIsDragging(false);
     // Small delay so event onClick sees wasRecentlyDragging before clearing
     setTimeout(() => { wasRecentlyDraggingRef.current = false; }, 80);
-  }, []);
+  }, [onPan]);
 
   return (
     <div
