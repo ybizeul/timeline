@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { EVENT_COLORS, DEFAULT_COLOR } from '../../utils/colors';
+import { EVENT_COLORS, GRAY_COLORS, DEFAULT_COLOR } from '../../utils/colors';
 import { resizeImage } from '../../utils/imageResize';
 import './PersonEditor.css';
 
@@ -370,6 +370,15 @@ export function PersonEditor({ person, isOpen, onSave, onDelete, onClose, people
             <label className="pe-label">Color</label>
             <div className="pe-colors">
               {EVENT_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`pe-swatch${draft.color === c ? ' is-selected' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => set('color', c)}
+                />
+              ))}
+              {GRAY_COLORS.map(c => (
                 <button
                   key={c}
                   type="button"

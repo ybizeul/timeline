@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { EVENT_COLORS, DEFAULT_COLOR } from '../../utils/colors';
+import { EVENT_COLORS, GRAY_COLORS, DEFAULT_COLOR } from '../../utils/colors';
 import './EventModal.css';
 
 function toDate(isoOrNull) {
@@ -107,6 +107,17 @@ export function EventModal({ event, defaultStart, onSave, onDelete, onClose }) {
             <label className="modal__label">Color</label>
             <div className="modal__colors">
               {EVENT_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`color-swatch${color === c ? ' is-selected' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => setColor(c)}
+                  aria-label={c}
+                  title={c}
+                />
+              ))}
+              {GRAY_COLORS.map(c => (
                 <button
                   key={c}
                   type="button"

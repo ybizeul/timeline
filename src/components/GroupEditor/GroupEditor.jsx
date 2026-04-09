@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { EVENT_COLORS } from '../../utils/colors';
+import { EVENT_COLORS, GRAY_COLORS } from '../../utils/colors';
 import './GroupEditor.css';
 
 const DEFAULT_GROUP_COLOR = '#606080';
@@ -109,6 +109,15 @@ export function GroupEditor({ group, isOpen, onSave, onDelete, onClose, people }
                 title="Default"
               />
               {EVENT_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`ge-swatch${draft.color === c ? ' is-selected' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => set('color', c)}
+                />
+              ))}
+              {GRAY_COLORS.map(c => (
                 <button
                   key={c}
                   type="button"

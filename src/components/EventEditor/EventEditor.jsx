@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { EVENT_COLORS, DEFAULT_COLOR } from '../../utils/colors';
+import { EVENT_COLORS, GRAY_COLORS, DEFAULT_COLOR } from '../../utils/colors';
 import { EVENT_STYLES, DEFAULT_EVENT_STYLE } from '../Timeline/EventItem';
 import './EventEditor.css';
 
@@ -168,6 +168,17 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
             <label className="ee-label">Color</label>
             <div className="ee-colors">
               {EVENT_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`ee-swatch${draft.color === c ? ' is-selected' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => set('color', c)}
+                  aria-label={c}
+                  title={c}
+                />
+              ))}
+              {GRAY_COLORS.map(c => (
                 <button
                   key={c}
                   type="button"

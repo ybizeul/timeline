@@ -13,4 +13,13 @@ export const EVENT_COLORS = [
   '#c8b820', // yellow
 ];
 
+export const GRAY_COLORS = [
+  '#2a2a2e', // charcoal
+  '#404048', // dark gray
+  '#606068', // gray
+  '#808088', // medium gray
+  '#a0a0a8', // silver
+  '#c0c0c8', // light gray
+];
+
 export const DEFAULT_COLOR = EVENT_COLORS[0];
