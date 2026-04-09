@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Timeline: horizontal line with event bars -->
+  <line x1="2" y1="14" x2="30" y2="14" stroke="#808098" stroke-width="1.2" stroke-linecap="round"/>
+  <rect x="5" y="8" width="7" height="4" rx="1.2" fill="#5b8def"/>
+  <rect x="14" y="10" width="5" height="4" rx="1.2" fill="#e06080"/>
+  <rect x="21" y="7" width="6" height="4" rx="1.2" fill="#50b880"/>
+
+  <!-- Org chart: nodes + connector lines -->
+  <line x1="16" y1="19" x2="16" y2="22" stroke="#808098" stroke-width="1" stroke-linecap="round"/>
+  <line x1="9" y1="22" x2="23" y2="22" stroke="#808098" stroke-width="1" stroke-linecap="round"/>
+  <line x1="9" y1="22" x2="9" y2="24" stroke="#808098" stroke-width="1" stroke-linecap="round"/>
+  <line x1="16" y1="22" x2="16" y2="24" stroke="#808098" stroke-width="1" stroke-linecap="round"/>
+  <line x1="23" y1="22" x2="23" y2="24" stroke="#808098" stroke-width="1" stroke-linecap="round"/>
+  <rect x="13.5" y="16.5" width="5" height="3" rx="1" fill="#5b8def"/>
+  <rect x="6.5" y="24" width="5" height="3" rx="1" fill="#e06080"/>
+  <rect x="13.5" y="24" width="5" height="3" rx="1" fill="#50b880"/>
+  <rect x="20.5" y="24" width="5" height="3" rx="1" fill="#d4a843"/>
+</svg>
