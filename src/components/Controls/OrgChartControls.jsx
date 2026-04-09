@@ -25,11 +25,11 @@ function ToolbarSearch({ people, onSelect }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    const onMouseDown = (e) => {
-      if (!wrapRef.current?.contains(e.target)) { setIsOpen(false); setMobileOpen(false); }
+    const onPointerDown = (e) => {
+      if (!wrapRef.current?.contains(e.target)) { setIsOpen(false); setMobileOpen(false); inputRef.current?.blur(); }
     };
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [isOpen]);
 
   const handleSelect = useCallback((person) => {
@@ -53,6 +53,21 @@ function ToolbarSearch({ people, onSelect }) {
       return !o;
     });
   };
+
+  // Catch Cmd/Ctrl+F to focus search field
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        setMobileOpen(true);
+        setIsOpen(true);
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
     <div className="toolbar-search" ref={wrapRef}>
