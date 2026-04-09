@@ -10,7 +10,7 @@ const DRAG_THRESHOLD = 4;
 const INERTIA_FRICTION = 0.92;
 const INERTIA_MIN_V = 0.5;
 
-export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup }, ref) {
+export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup, onGroupClick }, ref) {
   const wrapperRef = useRef(null);
   const dragRef = useRef(null);
   const pinchRef = useRef(null);
@@ -318,6 +318,7 @@ export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, 
             nodePositions={nodePositions}
             onUpdateLabel={(id, label) => onUpdateGroupLabel(id, label)}
             onDelete={onDeleteGroup}
+            onGroupClick={onGroupClick}
           />
           <OrgConnectors edges={layout.edges} nodePositions={nodePositions} />
           {layout.nodes.map(n => (

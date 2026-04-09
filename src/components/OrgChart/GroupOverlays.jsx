@@ -31,7 +31,7 @@ function groupBounds(group, nodePositions) {
   };
 }
 
-function GroupRect({ group, bounds, onUpdateLabel, onDelete }) {
+function GroupRect({ group, bounds, onUpdateLabel, onDelete, onGroupClick }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(group.label);
   const inputRef = useRef(null);
@@ -62,10 +62,13 @@ function GroupRect({ group, bounds, onUpdateLabel, onDelete }) {
         height={bounds.h}
         rx={8}
         ry={8}
-        fill="none"
-        stroke="#606080"
+        fill={group.color || '#606080'}
+        fillOpacity={0.1}
+        stroke={group.color || '#606080'}
         strokeWidth={1.5}
         strokeDasharray="6 4"
+        style={{ cursor: 'pointer' }}
+        onDoubleClick={(e) => { e.stopPropagation(); onGroupClick(group); }}
       />
       {!editing ? (
         <text
@@ -76,7 +79,7 @@ function GroupRect({ group, bounds, onUpdateLabel, onDelete }) {
           fontFamily="Inter, system-ui, sans-serif"
           fontWeight="700"
           style={{ cursor: 'pointer' }}
-          onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
+          onDoubleClick={(e) => { e.stopPropagation(); onGroupClick(group); }}
         >
           {group.label}
         </text>
@@ -140,7 +143,7 @@ function GroupRect({ group, bounds, onUpdateLabel, onDelete }) {
   );
 }
 
-export function GroupOverlays({ groups, nodePositions, onUpdateLabel, onDelete }) {
+export function GroupOverlays({ groups, nodePositions, onUpdateLabel, onDelete, onGroupClick }) {
   return groups.map(group => {
     const bounds = groupBounds(group, nodePositions);
     if (!bounds) return null;
@@ -151,6 +154,7 @@ export function GroupOverlays({ groups, nodePositions, onUpdateLabel, onDelete }
         bounds={bounds}
         onUpdateLabel={onUpdateLabel}
         onDelete={onDelete}
+        onGroupClick={onGroupClick}
       />
     );
   });

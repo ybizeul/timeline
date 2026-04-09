@@ -6,6 +6,7 @@ import { Timeline } from './components/Timeline/Timeline';
 import { EventEditor } from './components/EventEditor/EventEditor';
 import { OrgChart } from './components/OrgChart/OrgChart';
 import { PersonEditor } from './components/PersonEditor/PersonEditor';
+import { GroupEditor } from './components/GroupEditor/GroupEditor';
 import { useViewport } from './hooks/useViewport';
 import { useEvents } from './hooks/useEvents';
 import { useTimelines } from './hooks/useTimelines';
@@ -64,6 +65,7 @@ export default function App() {
   const { groups, addGroup, updateGroup, deleteGroup, cleanupPerson: cleanupPersonGroups } = useGroups(activeChartId);
   const { viewport: orgViewport, panBy: orgPanBy, panTo: orgPanTo, zoomAt: orgZoomAt, zoomIn: orgZoomIn, zoomOut: orgZoomOut, fitToScreen: orgFitToScreen, resetView: orgResetView } = useOrgViewport(activeChartId);
   const [personEditor, setPersonEditor] = useState({ isOpen: false, person: null });
+  const [groupEditor, setGroupEditor] = useState({ isOpen: false, group: null });
   const [focusedPersonId, setFocusedPersonId] = useState(null);
   const [showCardControls, setShowCardControls] = useState(() => {
     try { return localStorage.getItem('orgchart_show_card_controls') !== 'false'; } catch { return true; }
@@ -214,7 +216,28 @@ export default function App() {
 
   const handleDeleteGroup = useCallback((id) => {
     deleteGroup(id);
+    setGroupEditor(prev => prev.group?.id === id ? { ...prev, isOpen: false } : prev);
   }, [deleteGroup]);
+
+  const openGroupEditor = useCallback((group) => {
+    setGroupEditor({ isOpen: true, group });
+  }, []);
+
+  const closeGroupEditor = useCallback(() => {
+    setGroupEditor(prev => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const handleGroupSave = useCallback((data) => {
+    if (data.id) {
+      updateGroup(data.id, { label: data.label, color: data.color });
+    }
+    closeGroupEditor();
+  }, [updateGroup, closeGroupEditor]);
+
+  const handleGroupDelete = useCallback((id) => {
+    deleteGroup(id);
+    closeGroupEditor();
+  }, [deleteGroup, closeGroupEditor]);
 
   const handleOrgFitToScreen = useCallback((bounds, w, h) => {
     orgFitToScreen(bounds, w, h);
@@ -362,6 +385,7 @@ export default function App() {
               onCreateGroup={handleCreateGroup}
               onUpdateGroupLabel={handleUpdateGroupLabel}
               onDeleteGroup={handleDeleteGroup}
+              onGroupClick={openGroupEditor}
             />
             <PersonEditor
               person={personEditor.person}
@@ -369,6 +393,14 @@ export default function App() {
               onSave={handlePersonSave}
               onDelete={handlePersonDelete}
               onClose={closePersonEditor}
+              people={people}
+            />
+            <GroupEditor
+              group={groupEditor.group}
+              isOpen={groupEditor.isOpen}
+              onSave={handleGroupSave}
+              onDelete={handleGroupDelete}
+              onClose={closeGroupEditor}
               people={people}
             />
           </>

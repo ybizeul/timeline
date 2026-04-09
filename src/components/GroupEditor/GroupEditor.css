@@ -1,0 +1,252 @@
+/* Reuses pe- (person-editor) design tokens for consistency */
+
+/* ── Dimmer ─────────────────────────────────────────────── */
+.ge-dimmer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.22s;
+  pointer-events: none;
+  z-index: 200;
+}
+
+.ge-dimmer.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Panel ──────────────────────────────────────────────── */
+.ge-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.5);
+  transform: translateX(100%);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 201;
+  overflow: hidden;
+}
+
+.ge-panel.is-open {
+  transform: translateX(0);
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.ge-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ge-header__color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.ge-header__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ge-unsaved-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.ge-header__close {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.ge-header__close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* ── Body ───────────────────────────────────────────────── */
+.ge-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ge-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ge-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.ge-field input[type="text"] {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-el);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ge-field input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+.ge-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ge-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+  padding: 0;
+}
+
+.ge-swatch:hover {
+  transform: scale(1.15);
+}
+
+.ge-swatch.is-selected {
+  border-color: var(--text);
+  transform: scale(1.15);
+}
+
+.ge-divider {
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+.ge-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ge-btn {
+  padding: 7px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  border: none;
+}
+
+.ge-btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.ge-btn-primary:hover {
+  opacity: 0.85;
+}
+
+.ge-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ge-btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.ge-btn-ghost:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.ge-btn-danger {
+  background: transparent;
+  color: #e04848;
+  margin-left: auto;
+}
+
+.ge-btn-danger:hover {
+  background: rgba(224, 72, 72, 0.1);
+}
+
+.ge-members {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ge-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ge-member__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ge-member__name {
+  flex: 1;
+}
+
+.ge-member__role {
+  color: var(--text-muted);
+  font-size: 12px;
+}
