@@ -190,7 +190,7 @@ export function PersonCard({ person, x, y, onClick, onDoubleClick, hasChildren, 
           x1={CARD_W / 2}
           y1={CARD_H + 10}
           x2={CARD_W / 2}
-          y2={CARD_H + 26}
+          y2={CARD_H + 18}
           stroke="#606080"
           strokeWidth={1.5}
           strokeDasharray="4 3"
