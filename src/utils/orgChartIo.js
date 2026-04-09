@@ -120,6 +120,7 @@ export async function parseOrgChartFile(file) {
         id: raw.id || crypto.randomUUID(),
         personIds,
         label: (typeof raw.label === 'string' && raw.label) ? raw.label : 'Group',
+        color: (typeof raw.color === 'string' && raw.color) ? raw.color : undefined,
       });
     }
   }
