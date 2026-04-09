@@ -286,6 +286,11 @@
   .controls {
     padding: 8px 10px;
     gap: 4px;
+    position: relative;
+  }
+
+  .toolbar-search {
+    position: static;
   }
 
   .controls__secondary {
