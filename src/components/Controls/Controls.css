@@ -341,6 +341,10 @@
     min-width: unset;
   }
 
+  .toolbar-search__field.is-mobile-open input {
+    font-size: 16px;
+  }
+
   .toolbar-search__mobile-btn {
     display: flex;
   }
