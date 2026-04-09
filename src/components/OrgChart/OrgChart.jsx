@@ -218,6 +218,13 @@ export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, 
     return map;
   }, [people]);
 
+  // Build person lookup by id
+  const personById = useMemo(() => {
+    const map = new Map();
+    for (const p of people) map.set(p.id, p);
+    return map;
+  }, [people]);
+
   const handleCardClick = useCallback((person, e) => {
     // Only fire click if we didn't drag
     if (dragRef.current?.moved) return;
@@ -267,14 +274,73 @@ export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, 
     setSelectedIds(new Set());
   }, [selectedIds, onCreateGroup]);
 
-  // Clear selection on Escape
+  // Navigate to a card: select it and only pan if the card is not fully visible
+  const navigateToCard = useCallback((personId) => {
+    const node = nodePositions.get(personId);
+    if (!node || size.w <= 0 || size.h <= 0) return;
+    setSelectedIds(new Set([personId]));
+    const z = viewport.zoom;
+    const pad = 10;
+    const cardLeft   = node.x * z + viewport.panX;
+    const cardRight  = (node.x + CARD_W) * z + viewport.panX;
+    const cardTop    = node.y * z + viewport.panY;
+    const cardBottom = (node.y + CARD_H) * z + viewport.panY;
+    if (cardLeft >= pad && cardRight <= size.w - pad && cardTop >= pad && cardBottom <= size.h - pad) return;
+    const panX = size.w / 2 - (node.x + CARD_W / 2) * z;
+    const panY = size.h / 2 - (node.y + CARD_H / 2) * z;
+    onAnimatePanTo(panX, panY);
+  }, [nodePositions, size, viewport.zoom, viewport.panX, viewport.panY, onAnimatePanTo]);
+
+  // Keyboard navigation: Escape clears, arrows navigate tree
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') setSelectedIds(new Set());
+      if (e.key === 'Escape') { setSelectedIds(new Set()); return; }
+
+      // Arrow keys require exactly one selected card
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      if (selectedIds.size !== 1) return;
+
+      const currentId = [...selectedIds][0];
+      const current = personById.get(currentId);
+      if (!current) return;
+
+      let targetId = null;
+
+      if (e.key === 'ArrowUp') {
+        // Go to parent
+        if (current.reportsTo && personById.has(current.reportsTo)) {
+          targetId = current.reportsTo;
+        }
+      } else if (e.key === 'ArrowDown') {
+        // Go to first child
+        const children = childrenMap.get(currentId);
+        if (children && children.length > 0) {
+          targetId = children[0];
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        // Go to sibling
+        if (current.reportsTo && personById.has(current.reportsTo)) {
+          const siblings = childrenMap.get(current.reportsTo);
+          if (siblings) {
+            const idx = siblings.indexOf(currentId);
+            if (idx >= 0) {
+              const newIdx = e.key === 'ArrowLeft' ? idx - 1 : idx + 1;
+              if (newIdx >= 0 && newIdx < siblings.length) {
+                targetId = siblings[newIdx];
+              }
+            }
+          }
+        }
+      }
+
+      if (targetId) {
+        e.preventDefault();
+        navigateToCard(targetId);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [selectedIds, personById, childrenMap, navigateToCard]);
 
   const focusedPerson = focusedPersonId ? people.find(p => p.id === focusedPersonId) : null;
 

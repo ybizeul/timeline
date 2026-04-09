@@ -31,16 +31,15 @@ export function PersonCard({ person, x, y, onClick, onDoubleClick, hasChildren, 
       {/* Selection highlight */}
       {isSelected && (
         <rect
-          x={-3}
-          y={-3}
-          width={CARD_W + 6}
-          height={CARD_H + 6}
-          rx={RADIUS + 2}
-          ry={RADIUS + 2}
+          x={-4}
+          y={-4}
+          width={CARD_W + 8}
+          height={CARD_H + 8}
+          rx={RADIUS + 3}
+          ry={RADIUS + 3}
           fill="none"
-          stroke="var(--accent)"
-          strokeWidth={2}
-          strokeDasharray="4 3"
+          stroke={color}
+          strokeWidth={1}
         />
       )}
       {/* Clip paths */}
