@@ -63,7 +63,7 @@ function GroupRect({ group, bounds, onUpdateLabel, onDelete, onGroupClick }) {
         rx={8}
         ry={8}
         fill={group.color || '#606080'}
-        fillOpacity={0.07}
+        fillOpacity={0.04}
         stroke={group.color || '#606080'}
         strokeWidth={1.5}
         strokeDasharray="6 4"
