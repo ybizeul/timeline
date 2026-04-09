@@ -63,7 +63,7 @@ export default function App() {
   const { charts, activeId: activeChartId, switchChart, addChart, renameChart, deleteChart, importChart } = useOrgCharts();
   const { people, addPerson, updatePerson, deletePerson } = usePeople(activeChartId);
   const { groups, addGroup, updateGroup, deleteGroup, cleanupPerson: cleanupPersonGroups } = useGroups(activeChartId);
-  const { viewport: orgViewport, panBy: orgPanBy, panTo: orgPanTo, zoomAt: orgZoomAt, zoomIn: orgZoomIn, zoomOut: orgZoomOut, fitToScreen: orgFitToScreen, resetView: orgResetView } = useOrgViewport(activeChartId);
+  const { viewport: orgViewport, panBy: orgPanBy, panTo: orgPanTo, animatePanTo: orgAnimatePanTo, zoomAt: orgZoomAt, zoomIn: orgZoomIn, zoomOut: orgZoomOut, fitToScreen: orgFitToScreen, resetView: orgResetView } = useOrgViewport(activeChartId);
   const [personEditor, setPersonEditor] = useState({ isOpen: false, person: null });
   const [groupEditor, setGroupEditor] = useState({ isOpen: false, group: null });
   const [focusedPersonId, setFocusedPersonId] = useState(null);
@@ -372,6 +372,7 @@ export default function App() {
               viewport={orgViewport}
               onPan={orgPanBy}
               onPanTo={orgPanTo}
+              onAnimatePanTo={orgAnimatePanTo}
               onZoomAt={orgZoomAt}
               onPersonClick={openEditPerson}
               onFitToScreen={handleOrgFitToScreen}

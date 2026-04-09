@@ -10,7 +10,7 @@ const DRAG_THRESHOLD = 4;
 const INERTIA_FRICTION = 0.92;
 const INERTIA_MIN_V = 0.5;
 
-export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, onPanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup, onGroupClick }, ref) {
+export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, onPanTo, onAnimatePanTo, onZoomAt, onPersonClick, onFitToScreen, focusedPersonId, onClearFocus, collapsedIds, onToggleCollapse, onToggleFocus, showCardControls, groups, onCreateGroup, onUpdateGroupLabel, onDeleteGroup, onGroupClick }, ref) {
   const wrapperRef = useRef(null);
   const dragRef = useRef(null);
   const pinchRef = useRef(null);
@@ -54,9 +54,9 @@ export const OrgChart = forwardRef(function OrgChart({ people, viewport, onPan, 
       const z = viewport.zoom;
       const panX = size.w / 2 - (node.x + CARD_W / 2) * z;
       const panY = size.h / 2 - (node.y + CARD_H / 2) * z;
-      onPanTo(panX, panY);
+      onAnimatePanTo(panX, panY);
     },
-  }), [nodePositions, size, viewport.zoom, onPanTo]);
+  }), [nodePositions, size, viewport.zoom, onAnimatePanTo]);
 
   // Pan to show tree on focus change, keeping focused card visible
   useEffect(() => {

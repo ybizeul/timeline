@@ -104,5 +104,33 @@ export function useOrgViewport(chartId) {
     setViewport(prev => ({ ...prev, panX, panY }));
   }, []);
 
-  return { viewport, panBy, panTo, zoomAt, zoomIn, zoomOut, fitToScreen, resetView };
+  const animRef = useRef(null);
+
+  const animatePanTo = useCallback((panX, panY) => {
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+    const start = viewportRef.current;
+    const startX = start.panX;
+    const startY = start.panY;
+    const t0 = performance.now();
+    const duration = 1000;
+    const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const step = (now) => {
+      const t = Math.min((now - t0) / duration, 1);
+      const e = ease(t);
+      setViewport(prev => ({
+        ...prev,
+        panX: startX + (panX - startX) * e,
+        panY: startY + (panY - startY) * e,
+      }));
+      if (t < 1) animRef.current = requestAnimationFrame(step);
+      else animRef.current = null;
+    };
+    animRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
+  }, []);
+
+  return { viewport, panBy, panTo, animatePanTo, zoomAt, zoomIn, zoomOut, fitToScreen, resetView };
 }
