@@ -64,10 +64,10 @@ function parseServerState(data) {
   return { viewport: normalizedViewport, savedPosition: normalizedSaved };
 }
 
-export function useViewport(activeId) {
+export function useViewport(activeId, useServer = isServerMode) {
   const share = getShareContext();
   const [viewport, setViewport] = useState(() => loadViewport(activeId));
-  const [hasSavedPosition, setHasSavedPosition] = useState(() => isServerMode ? false : !!loadSavedPosition(activeId));
+  const [hasSavedPosition, setHasSavedPosition] = useState(() => useServer ? false : !!loadSavedPosition(activeId));
   const switchingRef = useRef(false);
   const activeIdRef = useRef(activeId);
   const viewportRef = useRef(viewport);
@@ -78,7 +78,7 @@ export function useViewport(activeId) {
   // Reload viewport when switching timelines
   useEffect(() => {
     if (activeIdRef.current !== activeId) {
-      if (!isServerMode) {
+      if (!useServer) {
         // Save final viewport for the timeline we're leaving
         localStorage.setItem(
           STORAGE_PREFIX + activeIdRef.current,
@@ -88,7 +88,7 @@ export function useViewport(activeId) {
       activeIdRef.current = activeId;
     }
     switchingRef.current = true;
-    if (!isServerMode) {
+    if (!useServer) {
       const saved = loadSavedPosition(activeId);
       savedPositionRef.current = saved;
       setViewport(loadViewport(activeId));
@@ -119,7 +119,7 @@ export function useViewport(activeId) {
     return () => {
       cancelled = true;
     };
-  }, [activeId, share.itemId, share.mode, share.raw]);
+  }, [activeId, share.itemId, share.mode, share.raw, useServer]);
 
   // Persist viewport on change — skip during timeline switch to avoid
   // writing the old timeline's position to the new timeline's key
@@ -128,7 +128,7 @@ export function useViewport(activeId) {
       switchingRef.current = false;
       return;
     }
-    if (!isServerMode) {
+    if (!useServer) {
       localStorage.setItem(STORAGE_PREFIX + activeId, JSON.stringify(viewport));
       return;
     }
@@ -151,16 +151,16 @@ export function useViewport(activeId) {
         persistTimeoutRef.current = null;
       }
     };
-  }, [activeId, viewport, share.itemId, share.mode]);
+  }, [activeId, viewport, share.itemId, share.mode, useServer]);
 
   // Save viewport on page unload so the final position is never lost
   useEffect(() => {
-    if (isServerMode) return;
+    if (useServer) return;
     const save = () =>
       localStorage.setItem(STORAGE_PREFIX + activeIdRef.current, JSON.stringify(viewportRef.current));
     window.addEventListener('beforeunload', save);
     return () => window.removeEventListener('beforeunload', save);
-  }, []);
+  }, [useServer]);
 
   const svgWidthRef = useRef(0);
   const initialResizeRef = useRef(true);
@@ -254,7 +254,7 @@ export function useViewport(activeId) {
   const savePosition = useCallback(() => {
     const { viewStart, viewEnd } = viewport;
     savedPositionRef.current = { viewStart, viewEnd };
-    if (!isServerMode) {
+    if (!useServer) {
       localStorage.setItem(SAVED_POS_PREFIX + activeId, JSON.stringify({ viewStart, viewEnd }));
     } else if (share.mode === 'timeline' && share.itemId) {
       // Shared links are read-only; keep the value only in memory.
@@ -265,12 +265,12 @@ export function useViewport(activeId) {
       }).catch((err) => console.error('Failed to save timeline position', err));
     }
     setHasSavedPosition(true);
-  }, [activeId, viewport, share.itemId, share.mode]);
+  }, [activeId, viewport, share.itemId, share.mode, useServer]);
 
   const recallPosition = useCallback(() => {
-    const saved = isServerMode ? savedPositionRef.current : loadSavedPosition(activeId);
+    const saved = useServer ? savedPositionRef.current : loadSavedPosition(activeId);
     if (saved) setViewport(clamp(saved.viewStart, saved.viewEnd));
-  }, [activeId, clamp]);
+  }, [activeId, clamp, useServer]);
 
   const setTimelineHeight = useCallback((tlHeight) => {
     setViewport((prev) => ({ ...prev, tlHeight }));
@@ -292,4 +292,10 @@ export function useViewport(activeId) {
     recallPosition,
     hasSavedPosition,
   };
+}
+
+export function useViewportStable(activeId, useServer = isServerMode) {
+  const localState = useViewport(activeId, false);
+  const serverState = useViewport(activeId, true);
+  return useServer ? serverState : localState;
 }

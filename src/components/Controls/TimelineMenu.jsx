@@ -6,6 +6,7 @@ export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, o
   const [isOpen, setIsOpen]     = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const menuRef  = useRef(null);
   const inputRef = useRef(null);
   const fileRef  = useRef(null);
@@ -40,10 +41,15 @@ export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, o
     setEditingId(null);
   }
 
-  function handleDelete(tl) {
-    if (window.confirm(`Delete "${tl.name}" and all its events?`)) {
-      onDelete(tl.id);
-    }
+  function requestDelete(tl) {
+    setDeleteTarget(tl);
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    onDelete(deleteTarget.id);
+    setDeleteTarget(null);
+    setIsOpen(false);
   }
 
   return (
@@ -96,7 +102,7 @@ export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, o
                     <button
                       className="tl-menu__icon-btn tl-menu__icon-btn--danger"
                       title="Delete"
-                      onClick={() => handleDelete(tl)}
+                      onClick={() => requestDelete(tl)}
                     >✕</button>
                   )}
                 </div>
@@ -161,6 +167,35 @@ export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, o
               />
             </>
           )}
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div
+          className="tl-menu__dialog-backdrop"
+          role="presentation"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="tl-menu__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete timeline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="tl-menu__dialog-title">Delete timeline?</h3>
+            <p className="tl-menu__dialog-text">
+              Delete "{deleteTarget.name}" and all its events?
+            </p>
+            <div className="tl-menu__dialog-actions">
+              <button className="tl-menu__dialog-btn" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </button>
+              <button className="tl-menu__dialog-btn tl-menu__dialog-btn--danger" onClick={confirmDelete}>
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

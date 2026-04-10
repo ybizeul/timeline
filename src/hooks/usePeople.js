@@ -126,6 +126,8 @@ function useServerPeople(chartId) {
   return { people, addPerson, updatePerson, deletePerson };
 }
 
-export function usePeople(chartId) {
-  return isServerMode ? useServerPeople(chartId) : useLocalPeople(chartId);
+export function usePeople(chartId, useServer = isServerMode) {
+  const localState = useLocalPeople(chartId);
+  const serverState = useServerPeople(chartId);
+  return useServer ? serverState : localState;
 }

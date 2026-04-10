@@ -181,3 +181,60 @@
   background: transparent;
   color: var(--text-muted);
 }
+
+.tl-menu__dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  background: color-mix(in oklab, var(--bg) 72%, black 28%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.tl-menu__dialog {
+  width: min(420px, 94vw);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.tl-menu__dialog-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.tl-menu__dialog-text {
+  margin: 8px 0 14px;
+  color: var(--text-dim);
+}
+
+.tl-menu__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tl-menu__dialog-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tl-menu__dialog-btn:hover {
+  border-color: var(--accent);
+}
+
+.tl-menu__dialog-btn--danger:hover {
+  border-color: #ff6666;
+  color: #ff6666;
+}

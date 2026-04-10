@@ -39,7 +39,7 @@ function parseServerOrgState(data) {
   return { viewport: normalizedViewport, collapsedIds, showCardControls };
 }
 
-export function useOrgViewport(chartId) {
+export function useOrgViewport(chartId, useServer = isServerMode) {
   const share = getShareContext();
   const [viewport, setViewport] = useState(() => loadViewport(chartId));
   const switchingRef = useRef(false);
@@ -51,13 +51,13 @@ export function useOrgViewport(chartId) {
 
   useEffect(() => {
     if (activeIdRef.current !== chartId) {
-      if (!isServerMode) {
+      if (!useServer) {
         localStorage.setItem(STORAGE_PREFIX + activeIdRef.current, JSON.stringify(viewportRef.current));
       }
       activeIdRef.current = chartId;
     }
     switchingRef.current = true;
-    if (!isServerMode) {
+    if (!useServer) {
       setViewport(loadViewport(chartId));
       return;
     }
@@ -86,14 +86,14 @@ export function useOrgViewport(chartId) {
     return () => {
       cancelled = true;
     };
-  }, [chartId, share.itemId, share.mode, share.raw]);
+  }, [chartId, share.itemId, share.mode, share.raw, useServer]);
 
   useEffect(() => {
     if (switchingRef.current) {
       switchingRef.current = false;
       return;
     }
-    if (!isServerMode) {
+    if (!useServer) {
       localStorage.setItem(STORAGE_PREFIX + chartId, JSON.stringify(viewport));
       return;
     }
@@ -117,15 +117,15 @@ export function useOrgViewport(chartId) {
         persistTimeoutRef.current = null;
       }
     };
-  }, [chartId, viewport, share.itemId, share.mode]);
+  }, [chartId, viewport, share.itemId, share.mode, useServer]);
 
   useEffect(() => {
-    if (isServerMode) return;
+    if (useServer) return;
     const save = () =>
       localStorage.setItem(STORAGE_PREFIX + activeIdRef.current, JSON.stringify(viewportRef.current));
     window.addEventListener('beforeunload', save);
     return () => window.removeEventListener('beforeunload', save);
-  }, []);
+  }, [useServer]);
 
   const panBy = useCallback((dx, dy) => {
     setViewport(prev => ({ ...prev, panX: prev.panX + dx, panY: prev.panY + dy }));
@@ -210,4 +210,10 @@ export function useOrgViewport(chartId) {
   }, []);
 
   return { viewport, panBy, panTo, animatePanTo, zoomAt, zoomIn, zoomOut, fitToScreen, resetView };
+}
+
+export function useOrgViewportStable(chartId, useServer = isServerMode) {
+  const localState = useOrgViewport(chartId, false);
+  const serverState = useOrgViewport(chartId, true);
+  return useServer ? serverState : localState;
 }

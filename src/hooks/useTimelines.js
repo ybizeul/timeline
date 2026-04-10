@@ -182,6 +182,8 @@ function useServerTimelines() {
   return { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline, importTimeline };
 }
 
-export function useTimelines() {
-  return isServerMode ? useServerTimelines() : useLocalTimelines();
+export function useTimelines(useServer = isServerMode) {
+  const localState = useLocalTimelines();
+  const serverState = useServerTimelines();
+  return useServer ? serverState : localState;
 }

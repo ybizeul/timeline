@@ -7,17 +7,17 @@ import { EventEditor } from './components/EventEditor/EventEditor';
 import { OrgChart } from './components/OrgChart/OrgChart';
 import { PersonEditor } from './components/PersonEditor/PersonEditor';
 import { GroupEditor } from './components/GroupEditor/GroupEditor';
-import { useViewport } from './hooks/useViewport';
+import { useViewportStable as useViewport } from './hooks/useViewport';
 import { useEvents } from './hooks/useEvents';
 import { useTimelines } from './hooks/useTimelines';
 import { useOrgCharts } from './hooks/useOrgCharts';
 import { usePeople } from './hooks/usePeople';
 import { useGroups } from './hooks/useGroups';
-import { useOrgViewport } from './hooks/useOrgViewport';
+import { useOrgViewportStable as useOrgViewport } from './hooks/useOrgViewport';
 import { exportTimelineSvg } from './utils/exportSvg';
 import { exportOrgChartSvg, exportOrgChartPng } from './utils/exportOrgChartSvg';
 import { computeOrgLayout } from './utils/orgLayout';
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './utils/api';
+import { apiGet, apiPost, apiPut } from './utils/api';
 import { isServerMode } from './utils/runtime';
 import './App.css';
 
@@ -77,8 +77,20 @@ export default function App() {
     try { localStorage.setItem('app_mode', mode); } catch { /* ignore */ }
   }, [mode, shareMode]);
 
+  const [authLoading, setAuthLoading] = useState(isServerMode && !readOnly);
+  const [isAuthenticated, setIsAuthenticated] = useState(!isServerMode || readOnly);
+  const [authProviders, setAuthProviders] = useState([]);
+  const [authError, setAuthError] = useState('');
+  const [authUserId, setAuthUserId] = useState('');
+  const [showAnonModeModal, setShowAnonModeModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [shareDialog, setShareDialog] = useState({ isOpen: false, url: '', copied: false, copyError: '' });
+  const migrationRunningRef = useRef(false);
+
+  const useServerData = isServerMode && (readOnly || isAuthenticated);
+
   // ── Timeline state ──
-  const { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline, importTimeline } = useTimelines();
+  const { timelines, activeId, switchTimeline, addTimeline, renameTimeline, deleteTimeline, importTimeline } = useTimelines(useServerData);
 
   const {
     viewport,
@@ -95,27 +107,21 @@ export default function App() {
     savePosition,
     recallPosition,
     hasSavedPosition,
-  } = useViewport(activeId);
+  } = useViewport(activeId, useServerData);
 
-  const { events, addEvent, updateEvent, deleteEvent } = useEvents(activeId);
+  const { events, addEvent, updateEvent, deleteEvent } = useEvents(activeId, useServerData);
 
   const [editor, setEditor] = useState({ isOpen: false, event: null, defaultStart: null });
   const [showToday, setShowToday] = useState(true);
   const [showWeekends, setShowWeekends] = useState(true);
   const [tlHeight, setTlHeight] = useState(() => viewport.tlHeight ?? DEFAULT_TL_HEIGHT);
   const resizeDragRef = useRef(null);
-  const [smokeStatus, setSmokeStatus] = useState('idle');
-  const [smokeMessage, setSmokeMessage] = useState('');
-  const [authLoading, setAuthLoading] = useState(isServerMode && !readOnly);
-  const [isAuthenticated, setIsAuthenticated] = useState(!isServerMode || readOnly);
-  const [authProviders, setAuthProviders] = useState([]);
-  const [authError, setAuthError] = useState('');
 
   // ── Org Chart state ──
-  const { charts, activeId: activeChartId, switchChart, addChart, renameChart, deleteChart, importChart } = useOrgCharts();
-  const { people, addPerson, updatePerson, deletePerson } = usePeople(activeChartId);
-  const { groups, addGroup, updateGroup, deleteGroup, cleanupPerson: cleanupPersonGroups } = useGroups(activeChartId);
-  const { viewport: orgViewport, panBy: orgPanBy, panTo: orgPanTo, animatePanTo: orgAnimatePanTo, zoomAt: orgZoomAt, zoomIn: orgZoomIn, zoomOut: orgZoomOut, fitToScreen: orgFitToScreen, resetView: orgResetView } = useOrgViewport(activeChartId);
+  const { charts, activeId: activeChartId, switchChart, addChart, renameChart, deleteChart, importChart } = useOrgCharts(useServerData);
+  const { people, addPerson, updatePerson, deletePerson } = usePeople(activeChartId, useServerData);
+  const { groups, addGroup, updateGroup, deleteGroup, cleanupPerson: cleanupPersonGroups } = useGroups(activeChartId, useServerData);
+  const { viewport: orgViewport, panBy: orgPanBy, panTo: orgPanTo, animatePanTo: orgAnimatePanTo, zoomAt: orgZoomAt, zoomIn: orgZoomIn, zoomOut: orgZoomOut, fitToScreen: orgFitToScreen, resetView: orgResetView } = useOrgViewport(activeChartId, useServerData);
   const [personEditor, setPersonEditor] = useState({ isOpen: false, person: null });
   const [groupEditor, setGroupEditor] = useState({ isOpen: false, group: null });
   const [focusedPersonId, setFocusedPersonId] = useState(null);
@@ -151,6 +157,7 @@ export default function App() {
     if (!isServerMode || readOnly) {
       setIsAuthenticated(true);
       setAuthLoading(false);
+      setAuthUserId('');
       return;
     }
 
@@ -168,16 +175,20 @@ export default function App() {
         try {
           const meRes = await apiGet('/api/auth/me');
           if (cancelled) return;
-          setIsAuthenticated(Boolean(meRes?.authenticated));
+          const authenticated = Boolean(meRes?.authenticated);
+          setIsAuthenticated(authenticated);
+          setAuthUserId(authenticated ? (meRes?.user?.localUserId || '') : '');
         } catch {
           if (cancelled) return;
           setIsAuthenticated(false);
+          setAuthUserId('');
         }
       } catch (err) {
         if (cancelled) return;
         setAuthError(err instanceof Error ? err.message : 'Failed to load auth status');
         setAuthProviders([]);
         setIsAuthenticated(false);
+        setAuthUserId('');
       } finally {
         if (!cancelled) setAuthLoading(false);
       }
@@ -188,6 +199,24 @@ export default function App() {
       cancelled = true;
     };
   }, [readOnly]);
+
+  useEffect(() => {
+    if (!isServerMode || readOnly || authLoading) {
+      setShowAnonModeModal(false);
+      return;
+    }
+    if (isAuthenticated) {
+      setShowAnonModeModal(false);
+      return;
+    }
+    setShowAnonModeModal(true);
+  }, [authLoading, isAuthenticated, readOnly]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setShowLoginModal(false);
+    }
+  }, [isAuthenticated]);
 
   // Restore tlHeight when switching timelines
   useEffect(() => {
@@ -358,97 +387,6 @@ export default function App() {
 
   const activeChartName = charts.find(c => c.id === activeChartId)?.name ?? 'Org Chart';
 
-  const runServerSmokeCheck = useCallback(async () => {
-    if (!isServerMode || readOnly || !isAuthenticated || smokeStatus === 'running') return;
-
-    setSmokeStatus('running');
-    setSmokeMessage('Running authenticated CRUD checks...');
-
-    const t0 = performance.now();
-    const stamp = Date.now();
-    let createdTimelineId = '';
-    let createdChartId = '';
-
-    try {
-      await apiGet('/api/private/whoami');
-
-      const timeline = await apiPost('/api/private/timelines', { name: `Smoke Timeline ${stamp}` });
-      createdTimelineId = timeline.id;
-      await apiPatch(`/api/private/timelines/${createdTimelineId}`, { name: `Smoke Timeline ${stamp} Renamed` });
-
-      const smokeEvent = {
-        id: crypto.randomUUID(),
-        title: 'Smoke Event',
-        start: new Date(stamp).toISOString(),
-        end: new Date(stamp + 3600000).toISOString(),
-      };
-      await apiPut(`/api/private/timelines/${createdTimelineId}/events`, { events: [smokeEvent] });
-      const timelineEvents = await apiGet(`/api/private/timelines/${createdTimelineId}/events`);
-      if (!Array.isArray(timelineEvents?.events) || timelineEvents.events.length !== 1) {
-        throw new Error('Timeline events round-trip validation failed');
-      }
-
-      const smokeViewport = { viewStart: stamp - 86400000, viewEnd: stamp + 86400000, tlHeight: 280 };
-      const smokeSavedPos = { viewStart: stamp - 43200000, viewEnd: stamp + 43200000 };
-      await apiPut(`/api/private/timelines/${createdTimelineId}/state`, {
-        viewport: smokeViewport,
-        savedPosition: smokeSavedPos,
-      });
-      const timelineState = await apiGet(`/api/private/timelines/${createdTimelineId}/state`);
-      if (!timelineState || typeof timelineState !== 'object') {
-        throw new Error('Timeline state validation failed');
-      }
-
-      const chart = await apiPost('/api/private/orgcharts', { name: `Smoke Org ${stamp}` });
-      createdChartId = chart.id;
-      await apiPatch(`/api/private/orgcharts/${createdChartId}`, { name: `Smoke Org ${stamp} Renamed` });
-
-      const p1 = { id: crypto.randomUUID(), firstName: 'Smoke', lastName: 'One', title: 'Role 1' };
-      const p2 = { id: crypto.randomUUID(), firstName: 'Smoke', lastName: 'Two', title: 'Role 2' };
-      await apiPut(`/api/private/orgcharts/${createdChartId}/people`, { people: [p1, p2] });
-      const peopleRes = await apiGet(`/api/private/orgcharts/${createdChartId}/people`);
-      if (!Array.isArray(peopleRes?.people) || peopleRes.people.length !== 2) {
-        throw new Error('Org people round-trip validation failed');
-      }
-
-      const group = { id: crypto.randomUUID(), personIds: [p1.id, p2.id], label: 'Smoke Group' };
-      await apiPut(`/api/private/orgcharts/${createdChartId}/groups`, { groups: [group] });
-      const groupsRes = await apiGet(`/api/private/orgcharts/${createdChartId}/groups`);
-      if (!Array.isArray(groupsRes?.groups) || groupsRes.groups.length !== 1) {
-        throw new Error('Org groups round-trip validation failed');
-      }
-
-      await apiPut(`/api/private/orgcharts/${createdChartId}/state`, {
-        viewport: { panX: 20, panY: 30, zoom: 1.1 },
-        collapsedIds: [p2.id],
-        showCardControls: true,
-      });
-      const orgState = await apiGet(`/api/private/orgcharts/${createdChartId}/state`);
-      if (!orgState || typeof orgState !== 'object') {
-        throw new Error('Org state validation failed');
-      }
-
-      await apiDelete(`/api/private/timelines/${createdTimelineId}`);
-      createdTimelineId = '';
-      await apiDelete(`/api/private/orgcharts/${createdChartId}`);
-      createdChartId = '';
-
-      const elapsedMs = Math.round(performance.now() - t0);
-      setSmokeStatus('pass');
-      setSmokeMessage(`Smoke check passed in ${elapsedMs}ms`);
-    } catch (err) {
-      setSmokeStatus('fail');
-      setSmokeMessage(err instanceof Error ? err.message : 'Smoke check failed');
-    } finally {
-      if (createdTimelineId) {
-        try { await apiDelete(`/api/private/timelines/${createdTimelineId}`); } catch { /* ignore */ }
-      }
-      if (createdChartId) {
-        try { await apiDelete(`/api/private/orgcharts/${createdChartId}`); } catch { /* ignore */ }
-      }
-    }
-  }, [readOnly, smokeStatus, isAuthenticated]);
-
   const enabledProviders = useMemo(
     () => authProviders.filter((p) => p && p.enabled && typeof p.id === 'string'),
     [authProviders],
@@ -465,6 +403,14 @@ export default function App() {
     return map[id] || id;
   }, []);
 
+  const handleLoginOpen = useCallback(() => {
+    setShowLoginModal(true);
+  }, []);
+
+  const handleLoginProvider = useCallback((providerId) => {
+    window.location.href = `/api/auth/${providerId}/start`;
+  }, []);
+
   const handleLogout = useCallback(async () => {
     try {
       await apiPost('/api/auth/logout', {});
@@ -472,29 +418,116 @@ export default function App() {
       console.error('Logout failed', err);
     } finally {
       setIsAuthenticated(false);
-      setSmokeStatus('idle');
-      setSmokeMessage('');
+      setAuthUserId('');
     }
   }, []);
 
-  const copyShareLink = useCallback(async (id) => {
-    const url = `${window.location.origin}/s/${encodeURIComponent(id)}`;
+  const migrateLocalDataToServer = useCallback(async () => {
+    if (!isServerMode || readOnly || !isAuthenticated || !authUserId) return;
+    const migrationKey = `server_migration_done_${authUserId}`;
+    if (localStorage.getItem(migrationKey) === '1') return;
+    if (migrationRunningRef.current) return;
+    migrationRunningRef.current = true;
+
+    const parse = (key) => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    };
 
     try {
-      await navigator.clipboard.writeText(url);
-      alert('Share link copied to clipboard.');
-    } catch {
-      prompt('Copy share link:', url);
+      const timelines = parse('timelines_index');
+      const timelineList = Array.isArray(timelines) && timelines.length > 0 ? timelines : [{ id: 'default', name: 'My Timeline' }];
+
+      for (const tl of timelineList) {
+        const events = parse(`timeline_events_${tl.id}`) || (tl.id === 'default' ? (parse('timeline_events') || []) : []);
+        const viewportState = parse(`timeline-viewport-${tl.id}`) || null;
+        const savedPosition = parse(`timeline-savedpos-${tl.id}`) || null;
+        const hasData = (Array.isArray(events) && events.length > 0)
+          || !!viewportState
+          || !!savedPosition
+          || (tl.id !== 'default' || (tl.name && tl.name !== 'My Timeline'));
+        if (!hasData) continue;
+
+        const created = await apiPost('/api/private/timelines', { name: tl.name || 'My Timeline' });
+        await apiPut(`/api/private/timelines/${created.id}/events`, { events: Array.isArray(events) ? events : [] });
+        await apiPut(`/api/private/timelines/${created.id}/state`, {
+          viewport: viewportState || {},
+          savedPosition: savedPosition || {},
+        });
+      }
+
+      const charts = parse('orgcharts_index');
+      const chartList = Array.isArray(charts) && charts.length > 0 ? charts : [{ id: 'default-org', name: 'My Org Chart' }];
+      const showCardControls = localStorage.getItem('orgchart_show_card_controls') !== 'false';
+
+      for (const chart of chartList) {
+        const peopleData = parse(`orgchart_people_${chart.id}`);
+        const groupsData = parse(`orgchart_groups_${chart.id}`);
+        const viewportData = parse(`orgchart-viewport-${chart.id}`);
+        const collapsed = parse(`orgchart_collapsed_${chart.id}`);
+        const peopleList = Array.isArray(peopleData) ? peopleData : [];
+        const groupsList = Array.isArray(groupsData) ? groupsData : [];
+        const collapsedIds = Array.isArray(collapsed) ? collapsed : [];
+
+        const hasData = peopleList.length > 0
+          || groupsList.length > 0
+          || !!viewportData
+          || collapsedIds.length > 0
+          || (chart.id !== 'default-org' || (chart.name && chart.name !== 'My Org Chart'));
+        if (!hasData) continue;
+
+        const created = await apiPost('/api/private/orgcharts', { name: chart.name || 'My Org Chart' });
+        await apiPut(`/api/private/orgcharts/${created.id}/people`, { people: peopleList });
+        await apiPut(`/api/private/orgcharts/${created.id}/groups`, { groups: groupsList });
+        await apiPut(`/api/private/orgcharts/${created.id}/state`, {
+          viewport: viewportData || {},
+          collapsedIds,
+          showCardControls,
+        });
+      }
+
+      localStorage.setItem(migrationKey, '1');
+    } catch (err) {
+      console.error('Failed to migrate local data to server', err);
+    } finally {
+      migrationRunningRef.current = false;
     }
+  }, [authUserId, isAuthenticated, readOnly]);
+
+  useEffect(() => {
+    migrateLocalDataToServer();
+  }, [migrateLocalDataToServer]);
+
+  const openShareDialog = useCallback((id) => {
+    const url = `${window.location.origin}/s/${encodeURIComponent(id)}`;
+    setShareDialog({ isOpen: true, url, copied: false, copyError: '' });
+  }, []);
+
+  const handleCopyShareLink = useCallback(async () => {
+    if (!shareDialog.url) return;
+    try {
+      await navigator.clipboard.writeText(shareDialog.url);
+      setShareDialog((prev) => ({ ...prev, copied: true, copyError: '' }));
+    } catch {
+      setShareDialog((prev) => ({ ...prev, copied: false, copyError: 'Clipboard access blocked. Copy the link manually below.' }));
+    }
+  }, [shareDialog.url]);
+
+  const closeShareDialog = useCallback(() => {
+    setShareDialog((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
   const handleShareTimeline = useCallback(() => {
-    copyShareLink(`t_${activeId}`);
-  }, [copyShareLink, activeId]);
+    openShareDialog(`t_${activeId}`);
+  }, [openShareDialog, activeId]);
 
   const handleShareOrgChart = useCallback(() => {
-    copyShareLink(`o_${activeChartId}`);
-  }, [copyShareLink, activeChartId]);
+    openShareDialog(`o_${activeChartId}`);
+  }, [openShareDialog, activeChartId]);
 
   const handleExportOrgChartSvg = useCallback(() => {
     exportOrgChartSvg({ people, chartName: activeChartName, focusedPersonId, collapsedIds, groups });
@@ -558,6 +591,8 @@ export default function App() {
               hasSavedPosition={hasSavedPosition}
               canShowLogout={isServerMode && !readOnly && isAuthenticated}
               onLogout={handleLogout}
+              canShowLogin={isServerMode && !readOnly && !isAuthenticated && !authLoading}
+              onLogin={handleLoginOpen}
               canShare={isServerMode && !readOnly && isAuthenticated}
               onShare={handleShareTimeline}
             />
@@ -618,6 +653,8 @@ export default function App() {
               onSelectPerson={(id) => { orgChartRef.current?.selectAndCenter(id); }}
               canShowLogout={isServerMode && !readOnly && isAuthenticated}
               onLogout={handleLogout}
+              canShowLogin={isServerMode && !readOnly && !isAuthenticated && !authLoading}
+              onLogin={handleLoginOpen}
               canShare={isServerMode && !readOnly && isAuthenticated}
               onShare={handleShareOrgChart}
             />
@@ -666,33 +703,39 @@ export default function App() {
           </>
         )}
       </div>
-      {isServerMode && !readOnly && isAuthenticated && (
-        <div className="smoke-check">
-          <button
-            className={`smoke-check__btn smoke-check__btn--${smokeStatus}`}
-            onClick={runServerSmokeCheck}
-            disabled={smokeStatus === 'running'}
-            title="Run authenticated server smoke checks"
-          >
-            {smokeStatus === 'running' ? 'Running smoke check...' : 'Run server smoke check'}
-          </button>
-          {smokeMessage && <span className="smoke-check__status">{smokeMessage}</span>}
+      {isServerMode && !readOnly && showAnonModeModal && (
+        <div className="auth-gate" role="dialog" aria-modal="true" aria-label="Local browser mode notice">
+          <div className="auth-gate__card">
+            <h2 className="auth-gate__title">Local Browser Mode</h2>
+            <p className="auth-gate__text">
+              You are using local browser mode. Your data is stored in this browser only.
+            </p>
+            <p className="auth-gate__hint">
+              Log in to persist data server-side and access it across devices.
+            </p>
+            <div className="auth-gate__actions" style={{ marginTop: 12 }}>
+              <button className="auth-gate__btn" onClick={() => setShowAnonModeModal(false)}>
+                Continue in Local Mode
+              </button>
+              <button className="auth-gate__btn" onClick={() => { setShowAnonModeModal(false); setShowLoginModal(true); }}>
+                Log In
+              </button>
+            </div>
+          </div>
         </div>
       )}
-      {isServerMode && !readOnly && !isAuthenticated && !authLoading && (
-        <div className="auth-gate" role="dialog" aria-modal="true" aria-label="Login required">
+      {isServerMode && !readOnly && showLoginModal && !isAuthenticated && (
+        <div className="auth-gate" role="dialog" aria-modal="true" aria-label="Log in">
           <div className="auth-gate__card">
-            <h2 className="auth-gate__title">Login Required</h2>
-            <p className="auth-gate__text">Sign in to access private timelines and org charts.</p>
+            <h2 className="auth-gate__title">Log In</h2>
+            <p className="auth-gate__text">Choose an authentication provider.</p>
             {enabledProviders.length > 0 ? (
               <div className="auth-gate__actions">
                 {enabledProviders.map((provider) => (
                   <button
                     key={provider.id}
                     className="auth-gate__btn"
-                    onClick={() => {
-                      window.location.href = `/api/auth/${provider.id}/start`;
-                    }}
+                    onClick={() => handleLoginProvider(provider.id)}
                   >
                     Continue with {providerLabel(provider.id)}
                   </button>
@@ -704,6 +747,36 @@ export default function App() {
               </p>
             )}
             {authError && <p className="auth-gate__error">{authError}</p>}
+            <div className="auth-gate__actions" style={{ marginTop: 12 }}>
+              <button className="auth-gate__btn" onClick={() => setShowLoginModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {shareDialog.isOpen && (
+        <div className="auth-gate" role="dialog" aria-modal="true" aria-label="Share link" onClick={closeShareDialog}>
+          <div className="auth-gate__card" onClick={(e) => e.stopPropagation()}>
+            <h2 className="auth-gate__title">Share Link</h2>
+            <p className="auth-gate__text">Use this link to share read-only access.</p>
+            <input
+              className="auth-gate__input"
+              readOnly
+              value={shareDialog.url}
+              onFocus={(e) => e.target.select()}
+              onClick={(e) => e.currentTarget.select()}
+            />
+            {shareDialog.copied && <p className="auth-gate__hint">Link copied to clipboard.</p>}
+            {shareDialog.copyError && <p className="auth-gate__error">{shareDialog.copyError}</p>}
+            <div className="auth-gate__actions" style={{ marginTop: 12 }}>
+              <button className="auth-gate__btn" onClick={handleCopyShareLink}>
+                Copy link
+              </button>
+              <button className="auth-gate__btn" onClick={closeShareDialog}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

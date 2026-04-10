@@ -186,6 +186,8 @@ function useServerOrgCharts() {
   return { charts, activeId, switchChart, addChart, renameChart, deleteChart, importChart };
 }
 
-export function useOrgCharts() {
-  return isServerMode ? useServerOrgCharts() : useLocalOrgCharts();
+export function useOrgCharts(useServer = isServerMode) {
+  const localState = useLocalOrgCharts();
+  const serverState = useServerOrgCharts();
+  return useServer ? serverState : localState;
 }

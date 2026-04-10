@@ -25,6 +25,8 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
   isReadOnly,
   canShowLogout,
   onLogout,
+  canShowLogin,
+  onLogin,
   canShare,
   onShare,
   showToday, onToggleToday,
@@ -151,6 +153,11 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
                 <path d="M13 12h8" />
                 <path d="M18 8l4 4-4 4" />
               </svg>
+            </button>
+          )}
+          {!canShowLogout && canShowLogin && (
+            <button className="ctrl-btn ctrl-btn--text" onClick={onLogin} title="Log in">
+              Log In
             </button>
           )}
         </>

@@ -136,6 +136,8 @@ function useServerGroups(chartId) {
   return { groups, addGroup, updateGroup, deleteGroup, cleanupPerson };
 }
 
-export function useGroups(chartId) {
-  return isServerMode ? useServerGroups(chartId) : useLocalGroups(chartId);
+export function useGroups(chartId, useServer = isServerMode) {
+  const localState = useLocalGroups(chartId);
+  const serverState = useServerGroups(chartId);
+  return useServer ? serverState : localState;
 }

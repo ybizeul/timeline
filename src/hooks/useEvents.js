@@ -121,6 +121,8 @@ function useServerEvents(timelineId) {
   return { events, addEvent, updateEvent, deleteEvent };
 }
 
-export function useEvents(timelineId) {
-  return isServerMode ? useServerEvents(timelineId) : useLocalEvents(timelineId);
+export function useEvents(timelineId, useServer = isServerMode) {
+  const localState = useLocalEvents(timelineId);
+  const serverState = useServerEvents(timelineId);
+  return useServer ? serverState : localState;
 }

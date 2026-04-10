@@ -19,11 +19,74 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          envFrom:
-            - configMapRef:
-                name: timeline-server-config
-            - secretRef:
-                name: timeline-server-secrets
+          env:
+            - name: HTTP_ADDR
+              value: ":8080"
+            - name: MONGO_URI
+              value: "mongodb://timeline-mongodb:27017"
+            - name: MONGO_DATABASE
+              value: "timeline"
+            - name: PUBLIC_BASE_URL
+              value: "https://timeline.example.com"
+            - name: COOKIE_SECURE
+              value: "true"
+            - name: COOKIE_SAMESITE
+              value: "Lax"
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: SESSION_SECRET
+            - name: OAUTH_GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_GITHUB_CLIENT_ID
+            - name: OAUTH_GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_GITHUB_CLIENT_SECRET
+            - name: OAUTH_GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_GOOGLE_CLIENT_ID
+            - name: OAUTH_GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_GOOGLE_CLIENT_SECRET
+            - name: OAUTH_APPLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_APPLE_CLIENT_ID
+            - name: OAUTH_APPLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_APPLE_CLIENT_SECRET
+            - name: OAUTH_FACEBOOK_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_FACEBOOK_CLIENT_ID
+            - name: OAUTH_FACEBOOK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_FACEBOOK_CLIENT_SECRET
+            - name: OAUTH_LINKEDIN_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_LINKEDIN_CLIENT_ID
+            - name: OAUTH_LINKEDIN_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: timeline-server-secrets
+                  key: OAUTH_LINKEDIN_CLIENT_SECRET
           readinessProbe:
             httpGet:
               path: /api/healthz
