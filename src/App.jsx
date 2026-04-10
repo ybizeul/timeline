@@ -403,6 +403,48 @@ export default function App() {
     return map[id] || id;
   }, []);
 
+  const renderProviderIcon = useCallback((id) => {
+    if (id === 'github') {
+      return (
+        <svg className="auth-gate__provider-logo auth-gate__provider-logo--svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M12 0.5C5.37 0.5 0 5.88 0 12.52c0 5.3 3.44 9.8 8.2 11.38c0.6 0.12 0.82-0.26 0.82-0.58c0-0.29-0.01-1.05-0.02-2.06c-3.34 0.73-4.04-1.61-4.04-1.61c-0.55-1.39-1.33-1.76-1.33-1.76c-1.08-0.74 0.08-0.73 0.08-0.73c1.2 0.08 1.82 1.24 1.82 1.24c1.06 1.82 2.79 1.29 3.47 0.98c0.11-0.77 0.42-1.29 0.76-1.59c-2.67-0.3-5.48-1.34-5.48-5.95c0-1.31 0.47-2.38 1.24-3.22c-0.12-0.3-0.54-1.52 0.12-3.16c0 0 1.01-0.32 3.3 1.23c0.96-0.27 1.98-0.41 3-0.42c1.02 0.01 2.04 0.15 3 0.42c2.28-1.55 3.29-1.23 3.29-1.23c0.66 1.64 0.25 2.86 0.12 3.16c0.77 0.84 1.24 1.91 1.24 3.22c0 4.62-2.81 5.64-5.49 5.94c0.43 0.37 0.82 1.1 0.82 2.23c0 1.61-0.01 2.91-0.01 3.3c0 0.32 0.22 0.71 0.83 0.58c4.76-1.58 8.19-6.08 8.19-11.38C24 5.88 18.63 0.5 12 0.5z"
+          />
+        </svg>
+      );
+    }
+    if (id === 'google') {
+      return (
+        <svg className="auth-gate__provider-logo auth-gate__provider-logo--svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#EA4335" d="M12 10.2v3.9h5.5c-0.2 1.2-1.4 3.5-5.5 3.5c-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2 0.8 3.9 1.5l2.7-2.6C16.8 2.9 14.6 2 12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c5.8 0 9.7-4.1 9.7-9.8c0-0.7-0.1-1.3-0.2-1.9H12z" />
+        </svg>
+      );
+    }
+    if (id === 'apple') {
+      return (
+        <svg className="auth-gate__provider-logo auth-gate__provider-logo--svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M16.37 12.2c0.02 2.43 2.13 3.24 2.15 3.25c-0.02 0.06-0.34 1.17-1.12 2.32c-0.68 1-1.38 2-2.49 2.02c-1.09 0.02-1.44-0.65-2.69-0.65c-1.25 0-1.64 0.63-2.67 0.67c-1.08 0.04-1.91-1.08-2.6-2.08c-1.41-2.04-2.48-5.77-1.04-8.27c0.71-1.24 1.99-2.02 3.37-2.04c1.05-0.02 2.05 0.71 2.69 0.71c0.64 0 1.83-0.88 3.09-0.75c0.53 0.02 2 0.21 2.95 1.6c-0.08 0.05-1.76 1.03-1.74 3.22zM14.23 6.1c0.57-0.69 0.95-1.64 0.84-2.6c-0.82 0.03-1.82 0.55-2.41 1.24c-0.53 0.61-0.99 1.58-0.87 2.51c0.91 0.07 1.85-0.47 2.44-1.15z" />
+        </svg>
+      );
+    }
+    if (id === 'facebook') {
+      return (
+        <svg className="auth-gate__provider-logo auth-gate__provider-logo--svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#1877F2" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07c0 6.03 4.39 11.03 10.13 11.93v-8.43H7.08v-3.5h3.05V9.41c0-3.03 1.79-4.7 4.53-4.7c1.31 0 2.68 0.24 2.68 0.24v2.97h-1.51c-1.49 0-1.95 0.93-1.95 1.88v2.26h3.32l-0.53 3.5h-2.79V24C19.61 23.1 24 18.1 24 12.07z" />
+        </svg>
+      );
+    }
+    if (id === 'linkedin') {
+      return (
+        <svg className="auth-gate__provider-logo auth-gate__provider-logo--svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#0A66C2" d="M20.45 20.45h-3.56v-5.58c0-1.33-0.03-3.03-1.85-3.03c-1.85 0-2.13 1.44-2.13 2.93v5.68H9.35V9h3.42v1.56h0.05c0.48-0.9 1.64-1.85 3.38-1.85c3.62 0 4.29 2.38 4.29 5.48v6.26zM5.34 7.43a2.07 2.07 0 1 1 0-4.14a2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.56V9h3.56v11.45z" />
+        </svg>
+      );
+    }
+    return null;
+  }, []);
+
   const handleLoginOpen = useCallback(() => {
     setShowLoginModal(true);
   }, []);
@@ -704,41 +746,40 @@ export default function App() {
         )}
       </div>
       {isServerMode && !readOnly && showAnonModeModal && (
-        <div className="auth-gate" role="dialog" aria-modal="true" aria-label="Local browser mode notice">
-          <div className="auth-gate__card">
-            <h2 className="auth-gate__title">Local Browser Mode</h2>
-            <p className="auth-gate__text">
-              You are using local browser mode. Your data is stored in this browser only.
-            </p>
-            <p className="auth-gate__hint">
-              Log in to persist data server-side and access it across devices.
-            </p>
-            <div className="auth-gate__actions" style={{ marginTop: 12 }}>
-              <button className="auth-gate__btn" onClick={() => setShowAnonModeModal(false)}>
-                Continue in Local Mode
-              </button>
-              <button className="auth-gate__btn" onClick={() => { setShowAnonModeModal(false); setShowLoginModal(true); }}>
-                Log In
-              </button>
-            </div>
-          </div>
+        <div className="anon-notice" role="status" aria-live="polite" aria-label="Local browser mode notice">
+          <p className="anon-notice__text">
+            You are not logged in, data will be stored in browser. You can log in to persist data on server.
+          </p>
+          <button className="anon-notice__btn" onClick={() => setShowAnonModeModal(false)}>
+            OK
+          </button>
         </div>
       )}
       {isServerMode && !readOnly && showLoginModal && !isAuthenticated && (
         <div className="auth-gate" role="dialog" aria-modal="true" aria-label="Log in">
           <div className="auth-gate__card">
+            <button className="auth-gate__close" aria-label="Close" onClick={() => setShowLoginModal(false)}>
+              ×
+            </button>
             <h2 className="auth-gate__title">Log In</h2>
             <p className="auth-gate__text">Choose an authentication provider.</p>
             {enabledProviders.length > 0 ? (
-              <div className="auth-gate__actions">
+              <div className="auth-gate__provider-grid">
                 {enabledProviders.map((provider) => (
-                  <button
-                    key={provider.id}
-                    className="auth-gate__btn"
-                    onClick={() => handleLoginProvider(provider.id)}
-                  >
-                    Continue with {providerLabel(provider.id)}
-                  </button>
+                  <div key={provider.id} className="auth-gate__provider-item">
+                    <button
+                      className="auth-gate__provider-btn"
+                      onClick={() => handleLoginProvider(provider.id)}
+                      aria-label={`Continue with ${providerLabel(provider.id)}`}
+                      title={`Continue with ${providerLabel(provider.id)}`}
+                    >
+                      <span className="auth-gate__provider-logo-wrap">
+                        <span className="auth-gate__provider-fallback" aria-hidden="true" />
+                        {renderProviderIcon(provider.id)}
+                      </span>
+                    </button>
+                    <span className="auth-gate__provider-name">{providerLabel(provider.id)}</span>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -747,11 +788,6 @@ export default function App() {
               </p>
             )}
             {authError && <p className="auth-gate__error">{authError}</p>}
-            <div className="auth-gate__actions" style={{ marginTop: 12 }}>
-              <button className="auth-gate__btn" onClick={() => setShowLoginModal(false)}>
-                Close
-              </button>
-            </div>
           </div>
         </div>
       )}
