@@ -386,6 +386,7 @@ export default function App() {
   }, [people, focusedPersonId, collapsedIds, groups, orgFitToScreen]);
 
   const activeChartName = charts.find(c => c.id === activeChartId)?.name ?? 'Org Chart';
+  const showOrgCardControls = readOnly ? true : showCardControls;
 
   const enabledProviders = useMemo(
     () => authProviders.filter((p) => p && p.enabled && typeof p.id === 'string'),
@@ -692,7 +693,7 @@ export default function App() {
               onClearFocus={handleClearFocus}
               onExportSvg={handleExportOrgChartSvg}
               onExportPng={handleExportOrgChartPng}
-              showCardControls={readOnly ? false : showCardControls}
+              showCardControls={showOrgCardControls}
               onToggleCardControls={() => {
                 if (readOnly) return;
                 setShowCardControls(p => {
@@ -723,7 +724,7 @@ export default function App() {
               collapsedIds={collapsedIds}
               onToggleCollapse={handleToggleCollapse}
               onToggleFocus={handleToggleFocus}
-              showCardControls={readOnly ? false : showCardControls}
+              showCardControls={showOrgCardControls}
               groups={groups}
               onCreateGroup={readOnly ? () => {} : handleCreateGroup}
               onUpdateGroupLabel={readOnly ? () => {} : handleUpdateGroupLabel}
