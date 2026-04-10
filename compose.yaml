@@ -1,0 +1,8 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: timeline-local-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./local/mongodb:/data/db

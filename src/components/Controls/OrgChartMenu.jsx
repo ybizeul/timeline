@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { exportOrgChart } from '../../utils/orgChartIo';
 
-export function OrgChartMenu({ charts, activeId, onSwitch, onAdd, onRename, onDelete, onImport, onExportSvg, onExportPng, hasPeople }) {
+export function OrgChartMenu({ charts, activeId, onSwitch, onAdd, onRename, onDelete, onImport, onExportSvg, onExportPng, hasPeople, isReadOnly = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -82,27 +82,33 @@ export function OrgChartMenu({ charts, activeId, onSwitch, onAdd, onRename, onDe
                 </span>
               )}
 
-              <div className="tl-menu__actions">
-                <button className="tl-menu__icon-btn" title="Rename" onClick={() => startEdit(chart)}>✎</button>
-                {charts.length > 1 && (
-                  <button
-                    className="tl-menu__icon-btn tl-menu__icon-btn--danger"
-                    title="Delete"
-                    onClick={() => handleDelete(chart)}
-                  >✕</button>
-                )}
-              </div>
+              {!isReadOnly && (
+                <div className="tl-menu__actions">
+                  <button className="tl-menu__icon-btn" title="Rename" onClick={() => startEdit(chart)}>✎</button>
+                  {charts.length > 1 && (
+                    <button
+                      className="tl-menu__icon-btn tl-menu__icon-btn--danger"
+                      title="Delete"
+                      onClick={() => handleDelete(chart)}
+                    >✕</button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
 
-          <div className="tl-menu__divider" />
+          {!isReadOnly && (
+            <>
+              <div className="tl-menu__divider" />
 
-          <button
-            className="tl-menu__add"
-            onClick={() => { onAdd('New Org Chart'); setIsOpen(false); }}
-          >
-            + New org chart
-          </button>
+              <button
+                className="tl-menu__add"
+                onClick={() => { onAdd('New Org Chart'); setIsOpen(false); }}
+              >
+                + New org chart
+              </button>
+            </>
+          )}
 
           <div className="tl-menu__divider" />
 
@@ -129,29 +135,33 @@ export function OrgChartMenu({ charts, activeId, onSwitch, onAdd, onRename, onDe
           >
             Export PNG
           </button>
-          <button
-            className="tl-menu__item"
-            onClick={() => fileRef.current?.click()}
-          >
-            Import
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".json"
-            style={{ display: 'none' }}
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              try {
-                await onImport(file);
-              } catch (err) {
-                alert(err.message);
-              }
-              e.target.value = '';
-              setIsOpen(false);
-            }}
-          />
+          {!isReadOnly && (
+            <>
+              <button
+                className="tl-menu__item"
+                onClick={() => fileRef.current?.click()}
+              >
+                Import
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    await onImport(file);
+                  } catch (err) {
+                    alert(err.message);
+                  }
+                  e.target.value = '';
+                  setIsOpen(false);
+                }}
+              />
+            </>
+          )}
         </div>
       )}
     </div>

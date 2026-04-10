@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { apiGet, apiPut } from '../utils/api';
+import { isServerMode } from '../utils/runtime';
+import { getShareContext } from '../utils/share';
 
 function storageKey(chartId) {
   return `orgchart_people_${chartId}`;
@@ -17,10 +20,10 @@ function loadPeople(chartId) {
 function savePeople(chartId, people) {
   try {
     localStorage.setItem(storageKey(chartId), JSON.stringify(people));
-  } catch { /* storage quota exceeded */ }
+  } catch { /* ignore */ }
 }
 
-export function usePeople(chartId) {
+function useLocalPeople(chartId) {
   const [people, setPeople] = useState(() => loadPeople(chartId));
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export function usePeople(chartId) {
 
   const addPerson = useCallback((person) => {
     const newPerson = { ...person, id: crypto.randomUUID() };
-    setPeople(prev => {
+    setPeople((prev) => {
       const next = [...prev, newPerson];
       savePeople(chartId, next);
       return next;
@@ -38,19 +41,18 @@ export function usePeople(chartId) {
   }, [chartId]);
 
   const updatePerson = useCallback((id, updates) => {
-    setPeople(prev => {
-      const next = prev.map(p => p.id === id ? { ...p, ...updates } : p);
+    setPeople((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...updates } : p));
       savePeople(chartId, next);
       return next;
     });
   }, [chartId]);
 
   const deletePerson = useCallback((id) => {
-    setPeople(prev => {
-      // Clear references to the deleted person
+    setPeople((prev) => {
       const next = prev
-        .filter(p => p.id !== id)
-        .map(p => ({
+        .filter((p) => p.id !== id)
+        .map((p) => ({
           ...p,
           reportsTo: p.reportsTo === id ? null : p.reportsTo,
           dottedReportsTo: p.dottedReportsTo === id ? null : p.dottedReportsTo,
@@ -61,4 +63,69 @@ export function usePeople(chartId) {
   }, [chartId]);
 
   return { people, addPerson, updatePerson, deletePerson };
+}
+
+function useServerPeople(chartId) {
+  const share = getShareContext();
+  const [people, setPeople] = useState([]);
+
+  const persist = useCallback(async (next) => {
+    if (share.mode === 'orgchart' && share.itemId) return;
+    if (!chartId) return;
+    await apiPut(`/api/private/orgcharts/${chartId}/people`, { people: next });
+  }, [chartId, share.itemId, share.mode]);
+
+  useEffect(() => {
+    if (!chartId) {
+      setPeople([]);
+      return;
+    }
+    const endpoint = share.mode === 'orgchart' && share.itemId
+      ? `/api/share/${share.raw}/people`
+      : `/api/private/orgcharts/${chartId}/people`;
+    apiGet(endpoint)
+      .then((data) => setPeople(Array.isArray(data?.people) ? data.people : []))
+      .catch((err) => {
+        console.error('Failed to load org people', err);
+        setPeople([]);
+      });
+  }, [chartId, share.itemId, share.mode, share.raw]);
+
+  const addPerson = useCallback((person) => {
+    const newPerson = { ...person, id: crypto.randomUUID() };
+    setPeople((prev) => {
+      const next = [...prev, newPerson];
+      persist(next).catch((err) => console.error('Failed to persist person add', err));
+      return next;
+    });
+    return newPerson;
+  }, [persist]);
+
+  const updatePerson = useCallback((id, updates) => {
+    setPeople((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...updates } : p));
+      persist(next).catch((err) => console.error('Failed to persist person update', err));
+      return next;
+    });
+  }, [persist]);
+
+  const deletePerson = useCallback((id) => {
+    setPeople((prev) => {
+      const next = prev
+        .filter((p) => p.id !== id)
+        .map((p) => ({
+          ...p,
+          reportsTo: p.reportsTo === id ? null : p.reportsTo,
+          dottedReportsTo: p.dottedReportsTo === id ? null : p.dottedReportsTo,
+        }));
+      persist(next).catch((err) => console.error('Failed to persist person delete', err));
+      return next;
+    });
+  }, [persist]);
+
+  return { people, addPerson, updatePerson, deletePerson };
+}
+
+export function usePeople(chartId) {
+  return isServerMode ? useServerPeople(chartId) : useLocalPeople(chartId);
 }

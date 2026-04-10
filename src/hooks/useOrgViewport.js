@@ -1,4 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { apiGet, apiPut } from '../utils/api';
+import { isServerMode } from '../utils/runtime';
+import { getShareContext } from '../utils/share';
 
 const STORAGE_PREFIX = 'orgchart-viewport-';
 const ZOOM_FACTOR = 0.15;
@@ -19,31 +22,105 @@ function loadViewport(chartId) {
   return DEFAULT_VIEWPORT;
 }
 
+function parseServerOrgState(data) {
+  const viewport = data?.viewport && typeof data.viewport === 'object' ? data.viewport : {};
+  const panX = Number(viewport.panX);
+  const panY = Number(viewport.panY);
+  const zoom = Number(viewport.zoom);
+  const normalizedViewport = Number.isFinite(panX) && Number.isFinite(panY) && Number.isFinite(zoom)
+    ? { panX, panY, zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom)) }
+    : DEFAULT_VIEWPORT;
+
+  const collapsedIds = Array.isArray(data?.collapsedIds)
+    ? data.collapsedIds.filter((v) => typeof v === 'string')
+    : [];
+  const showCardControls = typeof data?.showCardControls === 'boolean' ? data.showCardControls : true;
+
+  return { viewport: normalizedViewport, collapsedIds, showCardControls };
+}
+
 export function useOrgViewport(chartId) {
+  const share = getShareContext();
   const [viewport, setViewport] = useState(() => loadViewport(chartId));
   const switchingRef = useRef(false);
   const activeIdRef = useRef(chartId);
   const viewportRef = useRef(viewport);
+  const persistTimeoutRef = useRef(null);
+  const stateMetaRef = useRef({ collapsedIds: [], showCardControls: true });
   viewportRef.current = viewport;
 
   useEffect(() => {
     if (activeIdRef.current !== chartId) {
-      localStorage.setItem(STORAGE_PREFIX + activeIdRef.current, JSON.stringify(viewportRef.current));
+      if (!isServerMode) {
+        localStorage.setItem(STORAGE_PREFIX + activeIdRef.current, JSON.stringify(viewportRef.current));
+      }
       activeIdRef.current = chartId;
     }
     switchingRef.current = true;
-    setViewport(loadViewport(chartId));
-  }, [chartId]);
+    if (!isServerMode) {
+      setViewport(loadViewport(chartId));
+      return;
+    }
+
+    let cancelled = false;
+    const endpoint = share.mode === 'orgchart' && share.itemId
+      ? `/api/share/${share.raw}/state`
+      : `/api/private/orgcharts/${chartId}/state`;
+    apiGet(endpoint)
+      .then((state) => {
+        if (cancelled) return;
+        const parsed = parseServerOrgState(state);
+        stateMetaRef.current = {
+          collapsedIds: parsed.collapsedIds,
+          showCardControls: parsed.showCardControls,
+        };
+        setViewport(parsed.viewport);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to load org chart state', err);
+        stateMetaRef.current = { collapsedIds: [], showCardControls: true };
+        setViewport(DEFAULT_VIEWPORT);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chartId, share.itemId, share.mode, share.raw]);
 
   useEffect(() => {
     if (switchingRef.current) {
       switchingRef.current = false;
       return;
     }
-    localStorage.setItem(STORAGE_PREFIX + chartId, JSON.stringify(viewport));
-  }, [chartId, viewport]);
+    if (!isServerMode) {
+      localStorage.setItem(STORAGE_PREFIX + chartId, JSON.stringify(viewport));
+      return;
+    }
+
+    if (share.mode === 'orgchart' && share.itemId) {
+      return;
+    }
+
+    if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current);
+    persistTimeoutRef.current = setTimeout(() => {
+      apiPut(`/api/private/orgcharts/${chartId}/state`, {
+        viewport,
+        collapsedIds: stateMetaRef.current.collapsedIds,
+        showCardControls: stateMetaRef.current.showCardControls,
+      }).catch((err) => console.error('Failed to persist org chart viewport', err));
+    }, 180);
+
+    return () => {
+      if (persistTimeoutRef.current) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+    };
+  }, [chartId, viewport, share.itemId, share.mode]);
 
   useEffect(() => {
+    if (isServerMode) return;
     const save = () =>
       localStorage.setItem(STORAGE_PREFIX + activeIdRef.current, JSON.stringify(viewportRef.current));
     window.addEventListener('beforeunload', save);

@@ -22,6 +22,11 @@ function formatPeriod(viewStart, viewEnd) {
 }
 
 export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScrollRight, onToday, onAddEvent,
+  isReadOnly,
+  canShowLogout,
+  onLogout,
+  canShare,
+  onShare,
   showToday, onToggleToday,
   showWeekends, onToggleWeekends,
   timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline, onImportTimeline,
@@ -44,6 +49,7 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
   return (
     <div className="controls">
       <TimelineMenu
+        isReadOnly={isReadOnly}
         timelines={timelines}
         activeId={activeTimelineId}
         onSwitch={onSwitchTimeline}
@@ -128,9 +134,27 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
 
       <span className="controls__period">{periodLabel}</span>
       <div className="controls__spacer" />
-      <button className="ctrl-btn ctrl-btn--accent" onClick={onAddEvent}>
-        <span>+</span> <span className="controls__add-label">Add event</span>
-      </button>
+      {!isReadOnly && (
+        <>
+          {canShare && (
+            <button className="ctrl-btn ctrl-btn--text" onClick={onShare} title="Share timeline">
+              Share
+            </button>
+          )}
+          <button className="ctrl-btn ctrl-btn--accent" onClick={onAddEvent}>
+            <span>+</span> <span className="controls__add-label">Add event</span>
+          </button>
+          {canShowLogout && (
+            <button className="ctrl-btn ctrl-btn--logout" onClick={onLogout} title="Logout" aria-label="Logout">
+              <svg className="ctrl-btn__door-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 4h10v16H3z" />
+                <path d="M13 12h8" />
+                <path d="M18 8l4 4-4 4" />
+              </svg>
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }

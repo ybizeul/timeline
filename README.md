@@ -69,6 +69,31 @@ docker run -p 8080:80 timeline
 
 Then open [http://localhost:8080](http://localhost:8080).
 
+### Server Version (Go + MongoDB)
+
+This repository now includes an additive server runtime in [server/README.md](server/README.md).
+
+- Existing browser-only container remains unchanged.
+- New server image name/build target: `timeline-server`.
+- The Go binary serves API routes and embedded Vite assets.
+
+Build server binary:
+
+```bash
+npm run server:build
+```
+
+Build server container:
+
+```bash
+npm run docker:build:server
+```
+
+Sample deployment files:
+
+- Docker Compose: [deploy/docker-compose.server.sample.yml](deploy/docker-compose.server.sample.yml)
+- Kubernetes: [deploy/k8s](deploy/k8s)
+
 ## Usage
 
 ### Timeline

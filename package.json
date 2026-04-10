@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server:build": "cd server && go build ./cmd/timeline-server",
+    "server:run": "cd server && go run ./cmd/timeline-server",
+    "docker:build:server": "docker build -t timeline-server -f server/Dockerfile ."
   },
   "dependencies": {
     "date-fns": "^4.1.0",

@@ -1,4 +1,4 @@
-name: Build and push container
+name: Build and push containers
 
 on:
   push:
@@ -8,11 +8,17 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image_name: timeline
+            dockerfile: server/Dockerfile
+          - image_name: timeline-browser
+            dockerfile: Dockerfile
     permissions:
       contents: read
       packages: write
@@ -34,7 +40,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image_name }}
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-
@@ -51,6 +57,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

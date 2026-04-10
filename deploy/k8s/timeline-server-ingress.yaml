@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: timeline-server
+  namespace: timeline
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: timeline.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: timeline-server
+                port:
+                  number: 80
