@@ -9,7 +9,7 @@ RUN npm ci
 COPY . .
 RUN VITE_RUNTIME_MODE=server VITE_API_BASE= npm run build
 
-FROM golang:1.22-alpine AS go-build
+FROM golang:1.23-alpine AS go-build
 WORKDIR /src
 RUN apk add --no-cache ca-certificates tzdata
 COPY server/go.mod ./
