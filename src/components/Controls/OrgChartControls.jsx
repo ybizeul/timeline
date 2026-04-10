@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { IconLink } from '@tabler/icons-react';
 import { OrgChartMenu } from './OrgChartMenu';
 import './Controls.css';
 
@@ -114,12 +115,10 @@ function ToolbarSearch({ people, onSelect }) {
 
 export function OrgChartControls({
   isReadOnly,
-  canShowLogout,
-  onLogout,
-  canShowLogin,
-  onLogin,
   canShare,
   onShare,
+  shareFeedbackMessage,
+  shareFeedbackTone,
   charts, activeChartId, onSwitchChart, onAddChart, onRenameChart, onDeleteChart, onImportChart,
   hasPeople, onAddPerson, onZoomIn, onZoomOut, onFitToScreen,
   focusedPersonId, focusedPersonName, onClearFocus, onExportSvg, onExportPng,
@@ -153,6 +152,24 @@ export function OrgChartControls({
         onExportPng={onExportPng}
         hasPeople={hasPeople}
       />
+      {!isReadOnly && canShare && (
+        <>
+          <div className="controls__share-wrap">
+            <button className="ctrl-btn" onClick={onShare} title="Share org chart" aria-label="Share org chart">
+              <IconLink size={16} stroke={1.8} aria-hidden="true" />
+            </button>
+            {!!shareFeedbackMessage && (
+              <div
+                className={`controls__share-popover${shareFeedbackTone === 'error' ? ' is-error' : ''}`}
+                role="status"
+                aria-live="polite"
+              >
+                {shareFeedbackMessage}
+              </div>
+            )}
+          </div>
+        </>
+      )}
       <div className="controls__sep" />
 
       <div className="controls__secondary">
@@ -221,28 +238,9 @@ export function OrgChartControls({
       <div className="controls__spacer" />
       {!isReadOnly && (
         <>
-          {canShare && (
-            <button className="ctrl-btn ctrl-btn--text" onClick={onShare} title="Share org chart">
-              Share
-            </button>
-          )}
           <button className="ctrl-btn ctrl-btn--accent" onClick={onAddPerson}>
             <span>+</span> <span className="controls__add-label">Add person</span>
           </button>
-          {canShowLogout && (
-            <button className="ctrl-btn ctrl-btn--logout" onClick={onLogout} title="Logout" aria-label="Logout">
-              <svg className="ctrl-btn__door-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 4h10v16H3z" />
-                <path d="M13 12h8" />
-                <path d="M18 8l4 4-4 4" />
-              </svg>
-            </button>
-          )}
-          {!canShowLogout && canShowLogin && (
-            <button className="ctrl-btn ctrl-btn--text" onClick={onLogin} title="Log in">
-              Log In
-            </button>
-          )}
         </>
       )}
     </div>

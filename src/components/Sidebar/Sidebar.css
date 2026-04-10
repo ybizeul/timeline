@@ -49,8 +49,34 @@
   border-radius: 0 2px 2px 0;
 }
 
+.sidebar__btn--logout {
+  color: #9fd9a8;
+}
+
+.sidebar__btn--logout:hover {
+  background: rgba(47, 158, 68, 0.15);
+  color: #d4f5da;
+}
+
+.sidebar__btn--login {
+  color: var(--text-muted);
+}
+
+.sidebar__btn--login:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
 .sidebar__spacer {
   flex: 1;
+}
+
+.sidebar__footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 /* SVG icons inside sidebar buttons */

@@ -185,18 +185,18 @@
 .tl-menu__dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 260;
-  background: color-mix(in oklab, var(--bg) 72%, black 28%);
+  z-index: 2000;
+  background: transparent;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 16px;
+  padding: clamp(64px, 18vh, 220px) 16px 16px;
 }
 
 .tl-menu__dialog {
   width: min(420px, 94vw);
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: var(--surface-el);
   border-radius: 12px;
   box-shadow: var(--shadow);
   padding: 16px;
@@ -221,7 +221,7 @@
 .tl-menu__dialog-btn {
   appearance: none;
   border: 1px solid var(--border);
-  background: var(--panel-2);
+  background: var(--surface);
   color: var(--text);
   border-radius: 8px;
   padding: 8px 12px;

@@ -14,14 +14,15 @@ export function OrgChartMenu({ charts, activeId, onSwitch, onAdd, onRename, onDe
 
   useEffect(() => {
     if (!isOpen) return;
-    function onMouseDown(e) {
+    function onPointerDown(e) {
       if (!menuRef.current?.contains(e.target)) {
         setIsOpen(false);
         setEditingId(null);
       }
     }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
+    // Capture phase avoids interference from components that stop propagation.
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, [isOpen]);
 
   useEffect(() => {

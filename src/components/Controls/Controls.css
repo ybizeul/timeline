@@ -29,6 +29,31 @@
   flex: 1;
 }
 
+.controls__share-wrap {
+  position: relative;
+}
+
+.controls__share-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-el);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  z-index: 280;
+}
+
+.controls__share-popover.is-error {
+  color: #ff8f8f;
+  border-color: color-mix(in oklab, #ff8f8f 60%, var(--border) 40%);
+}
+
 .ctrl-btn {
   display: flex;
   align-items: center;

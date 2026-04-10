@@ -84,7 +84,7 @@ export default function App() {
   const [authUserId, setAuthUserId] = useState('');
   const [showAnonModeModal, setShowAnonModeModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [shareDialog, setShareDialog] = useState({ isOpen: false, url: '', copied: false, copyError: '' });
+  const [shareFeedback, setShareFeedback] = useState({ target: '', tone: 'success', message: '' });
   const migrationRunningRef = useRef(false);
 
   const useServerData = isServerMode && (readOnly || isAuthenticated);
@@ -446,8 +446,12 @@ export default function App() {
   }, []);
 
   const handleLoginOpen = useCallback(() => {
+    if (enabledProviders.length === 1) {
+      window.location.href = `/api/auth/${enabledProviders[0].id}/start`;
+      return;
+    }
     setShowLoginModal(true);
-  }, []);
+  }, [enabledProviders]);
 
   const handleLoginProvider = useCallback((providerId) => {
     window.location.href = `/api/auth/${providerId}/start`;
@@ -544,32 +548,31 @@ export default function App() {
     migrateLocalDataToServer();
   }, [migrateLocalDataToServer]);
 
-  const openShareDialog = useCallback((id) => {
+  const copyShareLink = useCallback(async (id, target) => {
     const url = `${window.location.origin}/s/${encodeURIComponent(id)}`;
-    setShareDialog({ isOpen: true, url, copied: false, copyError: '' });
-  }, []);
-
-  const handleCopyShareLink = useCallback(async () => {
-    if (!shareDialog.url) return;
     try {
-      await navigator.clipboard.writeText(shareDialog.url);
-      setShareDialog((prev) => ({ ...prev, copied: true, copyError: '' }));
+      await navigator.clipboard.writeText(url);
+      setShareFeedback({ target, tone: 'success', message: 'Link copied' });
     } catch {
-      setShareDialog((prev) => ({ ...prev, copied: false, copyError: 'Clipboard access blocked. Copy the link manually below.' }));
+      setShareFeedback({ target, tone: 'error', message: 'Clipboard blocked' });
     }
-  }, [shareDialog.url]);
-
-  const closeShareDialog = useCallback(() => {
-    setShareDialog((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
   const handleShareTimeline = useCallback(() => {
-    openShareDialog(`t_${activeId}`);
-  }, [openShareDialog, activeId]);
+    copyShareLink(`t_${activeId}`, 'timeline');
+  }, [copyShareLink, activeId]);
 
   const handleShareOrgChart = useCallback(() => {
-    openShareDialog(`o_${activeChartId}`);
-  }, [openShareDialog, activeChartId]);
+    copyShareLink(`o_${activeChartId}`, 'orgchart');
+  }, [copyShareLink, activeChartId]);
+
+  useEffect(() => {
+    if (!shareFeedback.target || !shareFeedback.message) return;
+    const timer = window.setTimeout(() => {
+      setShareFeedback({ target: '', tone: 'success', message: '' });
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [shareFeedback]);
 
   const handleExportOrgChartSvg = useCallback(() => {
     exportOrgChartSvg({ people, chartName: activeChartName, focusedPersonId, collapsedIds, groups });
@@ -602,7 +605,16 @@ export default function App() {
 
   return (
     <div className="app">
-      {!readOnly && <Sidebar mode={mode} onModeChange={setMode} />}
+      {!readOnly && (
+        <Sidebar
+          mode={mode}
+          onModeChange={setMode}
+          canShowLogout={isServerMode && isAuthenticated}
+          onLogout={handleLogout}
+          canShowLogin={isServerMode && !isAuthenticated && !authLoading}
+          onLogin={handleLoginOpen}
+        />
+      )}
       <div className="app__main">
         {mode === 'timeline' ? (
           <>
@@ -631,12 +643,10 @@ export default function App() {
               onSavePosition={savePosition}
               onRecallPosition={recallPosition}
               hasSavedPosition={hasSavedPosition}
-              canShowLogout={isServerMode && !readOnly && isAuthenticated}
-              onLogout={handleLogout}
-              canShowLogin={isServerMode && !readOnly && !isAuthenticated && !authLoading}
-              onLogin={handleLoginOpen}
               canShare={isServerMode && !readOnly && isAuthenticated}
               onShare={handleShareTimeline}
+              shareFeedbackMessage={shareFeedback.target === 'timeline' ? shareFeedback.message : ''}
+              shareFeedbackTone={shareFeedback.tone}
             />
             <Timeline
               viewport={viewport}
@@ -693,12 +703,10 @@ export default function App() {
               }}
               people={people}
               onSelectPerson={(id) => { orgChartRef.current?.selectAndCenter(id); }}
-              canShowLogout={isServerMode && !readOnly && isAuthenticated}
-              onLogout={handleLogout}
-              canShowLogin={isServerMode && !readOnly && !isAuthenticated && !authLoading}
-              onLogin={handleLoginOpen}
               canShare={isServerMode && !readOnly && isAuthenticated}
               onShare={handleShareOrgChart}
+              shareFeedbackMessage={shareFeedback.target === 'orgchart' ? shareFeedback.message : ''}
+              shareFeedbackTone={shareFeedback.tone}
             />
             <OrgChart
               ref={orgChartRef}
@@ -788,31 +796,6 @@ export default function App() {
               </p>
             )}
             {authError && <p className="auth-gate__error">{authError}</p>}
-          </div>
-        </div>
-      )}
-      {shareDialog.isOpen && (
-        <div className="auth-gate" role="dialog" aria-modal="true" aria-label="Share link" onClick={closeShareDialog}>
-          <div className="auth-gate__card" onClick={(e) => e.stopPropagation()}>
-            <h2 className="auth-gate__title">Share Link</h2>
-            <p className="auth-gate__text">Use this link to share read-only access.</p>
-            <input
-              className="auth-gate__input"
-              readOnly
-              value={shareDialog.url}
-              onFocus={(e) => e.target.select()}
-              onClick={(e) => e.currentTarget.select()}
-            />
-            {shareDialog.copied && <p className="auth-gate__hint">Link copied to clipboard.</p>}
-            {shareDialog.copyError && <p className="auth-gate__error">{shareDialog.copyError}</p>}
-            <div className="auth-gate__actions" style={{ marginTop: 12 }}>
-              <button className="auth-gate__btn" onClick={handleCopyShareLink}>
-                Copy link
-              </button>
-              <button className="auth-gate__btn" onClick={closeShareDialog}>
-                Close
-              </button>
-            </div>
           </div>
         </div>
       )}

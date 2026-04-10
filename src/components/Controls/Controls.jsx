@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
+import { IconLink } from '@tabler/icons-react';
 import { formatDate } from '../../utils/locale';
 import { TimelineMenu } from './TimelineMenu';
 import './Controls.css';
@@ -23,12 +24,10 @@ function formatPeriod(viewStart, viewEnd) {
 
 export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScrollRight, onToday, onAddEvent,
   isReadOnly,
-  canShowLogout,
-  onLogout,
-  canShowLogin,
-  onLogin,
   canShare,
   onShare,
+  shareFeedbackMessage,
+  shareFeedbackTone,
   showToday, onToggleToday,
   showWeekends, onToggleWeekends,
   timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline, onImportTimeline,
@@ -62,6 +61,24 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
         onExportSvg={onExportSvg}
         hasEvents={hasEvents}
       />
+      {!isReadOnly && canShare && (
+        <>
+          <div className="controls__share-wrap">
+            <button className="ctrl-btn" onClick={onShare} title="Share timeline" aria-label="Share timeline">
+              <IconLink size={16} stroke={1.8} aria-hidden="true" />
+            </button>
+            {!!shareFeedbackMessage && (
+              <div
+                className={`controls__share-popover${shareFeedbackTone === 'error' ? ' is-error' : ''}`}
+                role="status"
+                aria-live="polite"
+              >
+                {shareFeedbackMessage}
+              </div>
+            )}
+          </div>
+        </>
+      )}
       <div className="controls__sep" />
 
       {/* Secondary controls — hidden on mobile, shown in overflow menu instead */}
@@ -138,28 +155,9 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
       <div className="controls__spacer" />
       {!isReadOnly && (
         <>
-          {canShare && (
-            <button className="ctrl-btn ctrl-btn--text" onClick={onShare} title="Share timeline">
-              Share
-            </button>
-          )}
           <button className="ctrl-btn ctrl-btn--accent" onClick={onAddEvent}>
             <span>+</span> <span className="controls__add-label">Add event</span>
           </button>
-          {canShowLogout && (
-            <button className="ctrl-btn ctrl-btn--logout" onClick={onLogout} title="Logout" aria-label="Logout">
-              <svg className="ctrl-btn__door-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 4h10v16H3z" />
-                <path d="M13 12h8" />
-                <path d="M18 8l4 4-4 4" />
-              </svg>
-            </button>
-          )}
-          {!canShowLogout && canShowLogin && (
-            <button className="ctrl-btn ctrl-btn--text" onClick={onLogin} title="Log in">
-              Log In
-            </button>
-          )}
         </>
       )}
     </div>

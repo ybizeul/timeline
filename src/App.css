@@ -52,6 +52,22 @@
   padding: 16px;
 }
 
+.auth-gate--subtle {
+  background: transparent;
+  align-items: flex-start;
+  padding: clamp(64px, 18vh, 220px) 16px 16px;
+  z-index: 2000;
+}
+
+.auth-gate--subtle .auth-gate__card {
+  background: var(--surface-el);
+}
+
+.auth-gate--subtle .auth-gate__btn,
+.auth-gate--subtle .auth-gate__input {
+  background: var(--surface);
+}
+
 .auth-gate__card {
   position: relative;
   width: min(560px, 94vw);
@@ -199,6 +215,48 @@
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 13px;
+}
+
+.auth-gate__input-shell {
+  position: relative;
+}
+
+.auth-gate__input-shell .auth-gate__input {
+  padding-right: 44px;
+}
+
+.auth-gate__copy-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.auth-gate__copy-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.auth-gate__copy-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.auth-gate__copy-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
 }
 
 .auth-gate__hint {
