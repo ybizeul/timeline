@@ -1,5 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { xToT } from '../utils/timeScale';
+import { apiGet, apiPut } from '../utils/api';
+import { isServerMode } from '../utils/runtime';
+import { getShareContext } from '../utils/share';
 
 const NOW = Date.now();
 const DEFAULT_DURATION = 365 * 24 * 3600 * 1000; // 12 months
@@ -37,28 +40,86 @@ function loadSavedPosition(activeId) {
   return null;
 }
 
+function parseServerState(data) {
+  const viewport = data?.viewport && typeof data.viewport === 'object' ? data.viewport : {};
+  const savedPosition = data?.savedPosition && typeof data.savedPosition === 'object' ? data.savedPosition : null;
+
+  const viewStart = Number(viewport.viewStart);
+  const viewEnd = Number(viewport.viewEnd);
+  const tlHeight = Number(viewport.tlHeight);
+
+  const normalizedViewport = Number.isFinite(viewStart) && Number.isFinite(viewEnd) && viewEnd > viewStart
+    ? { viewStart, viewEnd, tlHeight: Number.isFinite(tlHeight) ? tlHeight : null }
+    : DEFAULT_VIEWPORT;
+
+  let normalizedSaved = null;
+  if (savedPosition) {
+    const spStart = Number(savedPosition.viewStart);
+    const spEnd = Number(savedPosition.viewEnd);
+    if (Number.isFinite(spStart) && Number.isFinite(spEnd) && spEnd > spStart) {
+      normalizedSaved = { viewStart: spStart, viewEnd: spEnd };
+    }
+  }
+
+  return { viewport: normalizedViewport, savedPosition: normalizedSaved };
+}
+
 export function useViewport(activeId) {
+  const share = getShareContext();
   const [viewport, setViewport] = useState(() => loadViewport(activeId));
-  const [hasSavedPosition, setHasSavedPosition] = useState(() => !!loadSavedPosition(activeId));
+  const [hasSavedPosition, setHasSavedPosition] = useState(() => isServerMode ? false : !!loadSavedPosition(activeId));
   const switchingRef = useRef(false);
   const activeIdRef = useRef(activeId);
   const viewportRef = useRef(viewport);
+  const savedPositionRef = useRef(isServerMode ? null : loadSavedPosition(activeId));
+  const persistTimeoutRef = useRef(null);
   viewportRef.current = viewport;
 
   // Reload viewport when switching timelines
   useEffect(() => {
     if (activeIdRef.current !== activeId) {
-      // Save final viewport for the timeline we're leaving
-      localStorage.setItem(
-        STORAGE_PREFIX + activeIdRef.current,
-        JSON.stringify(viewportRef.current),
-      );
+      if (!isServerMode) {
+        // Save final viewport for the timeline we're leaving
+        localStorage.setItem(
+          STORAGE_PREFIX + activeIdRef.current,
+          JSON.stringify(viewportRef.current),
+        );
+      }
       activeIdRef.current = activeId;
     }
     switchingRef.current = true;
-    setViewport(loadViewport(activeId));
-    setHasSavedPosition(!!loadSavedPosition(activeId));
-  }, [activeId]);
+    if (!isServerMode) {
+      const saved = loadSavedPosition(activeId);
+      savedPositionRef.current = saved;
+      setViewport(loadViewport(activeId));
+      setHasSavedPosition(!!saved);
+      return;
+    }
+
+    let cancelled = false;
+    const endpoint = share.mode === 'timeline' && share.itemId
+      ? `/api/share/${share.raw}/state`
+      : `/api/private/timelines/${activeId}/state`;
+    apiGet(endpoint)
+      .then((state) => {
+        if (cancelled) return;
+        const parsed = parseServerState(state);
+        savedPositionRef.current = parsed.savedPosition;
+        setViewport(parsed.viewport);
+        setHasSavedPosition(!!parsed.savedPosition);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to load timeline state', err);
+        savedPositionRef.current = null;
+        setViewport(DEFAULT_VIEWPORT);
+        setHasSavedPosition(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, share.itemId, share.mode, share.raw]);
 
   // Persist viewport on change — skip during timeline switch to avoid
   // writing the old timeline's position to the new timeline's key
@@ -67,11 +128,34 @@ export function useViewport(activeId) {
       switchingRef.current = false;
       return;
     }
-    localStorage.setItem(STORAGE_PREFIX + activeId, JSON.stringify(viewport));
-  }, [activeId, viewport]);
+    if (!isServerMode) {
+      localStorage.setItem(STORAGE_PREFIX + activeId, JSON.stringify(viewport));
+      return;
+    }
+
+    if (share.mode === 'timeline' && share.itemId) {
+      return;
+    }
+
+    if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current);
+    persistTimeoutRef.current = setTimeout(() => {
+      apiPut(`/api/private/timelines/${activeId}/state`, {
+        viewport,
+        savedPosition: savedPositionRef.current || {},
+      }).catch((err) => console.error('Failed to persist timeline state', err));
+    }, 180);
+
+    return () => {
+      if (persistTimeoutRef.current) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+    };
+  }, [activeId, viewport, share.itemId, share.mode]);
 
   // Save viewport on page unload so the final position is never lost
   useEffect(() => {
+    if (isServerMode) return;
     const save = () =>
       localStorage.setItem(STORAGE_PREFIX + activeIdRef.current, JSON.stringify(viewportRef.current));
     window.addEventListener('beforeunload', save);
@@ -169,14 +253,28 @@ export function useViewport(activeId) {
 
   const savePosition = useCallback(() => {
     const { viewStart, viewEnd } = viewport;
-    localStorage.setItem(SAVED_POS_PREFIX + activeId, JSON.stringify({ viewStart, viewEnd }));
+    savedPositionRef.current = { viewStart, viewEnd };
+    if (!isServerMode) {
+      localStorage.setItem(SAVED_POS_PREFIX + activeId, JSON.stringify({ viewStart, viewEnd }));
+    } else if (share.mode === 'timeline' && share.itemId) {
+      // Shared links are read-only; keep the value only in memory.
+    } else {
+      apiPut(`/api/private/timelines/${activeId}/state`, {
+        viewport,
+        savedPosition: savedPositionRef.current,
+      }).catch((err) => console.error('Failed to save timeline position', err));
+    }
     setHasSavedPosition(true);
-  }, [activeId, viewport]);
+  }, [activeId, viewport, share.itemId, share.mode]);
 
   const recallPosition = useCallback(() => {
-    const saved = loadSavedPosition(activeId);
+    const saved = isServerMode ? savedPositionRef.current : loadSavedPosition(activeId);
     if (saved) setViewport(clamp(saved.viewStart, saved.viewEnd));
   }, [activeId, clamp]);
+
+  const setTimelineHeight = useCallback((tlHeight) => {
+    setViewport((prev) => ({ ...prev, tlHeight }));
+  }, []);
 
   return {
     viewport,
@@ -189,6 +287,7 @@ export function useViewport(activeId) {
     scrollLeft,
     scrollRight,
     goToday,
+    setTimelineHeight,
     savePosition,
     recallPosition,
     hasSavedPosition,

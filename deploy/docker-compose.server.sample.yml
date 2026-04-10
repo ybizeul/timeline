@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  timeline-server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: timeline-server:local
+    container_name: timeline-server
+    ports:
+      - "8080:8080"
+    environment:
+      HTTP_ADDR: ":8080"
+      MONGO_URI: "mongodb://mongodb:27017"
+      MONGO_DATABASE: "timeline"
+      SESSION_SECRET: "replace-with-long-random-secret"
+      PUBLIC_BASE_URL: "http://localhost:8080"
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: "Lax"
+      OAUTH_GITHUB_CLIENT_ID: ""
+      OAUTH_GITHUB_CLIENT_SECRET: ""
+      OAUTH_GOOGLE_CLIENT_ID: ""
+      OAUTH_GOOGLE_CLIENT_SECRET: ""
+      OAUTH_APPLE_CLIENT_ID: ""
+      OAUTH_APPLE_CLIENT_SECRET: ""
+      OAUTH_FACEBOOK_CLIENT_ID: ""
+      OAUTH_FACEBOOK_CLIENT_SECRET: ""
+      OAUTH_LINKEDIN_CLIENT_ID: ""
+      OAUTH_LINKEDIN_CLIENT_SECRET: ""
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:7
+    container_name: timeline-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - timeline_mongodb_data:/data/db
+
+volumes:
+  timeline_mongodb_data:

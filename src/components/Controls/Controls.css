@@ -76,6 +76,27 @@
   color: #fff;
 }
 
+.ctrl-btn--logout {
+  background: #2f9e44;
+  color: #fff;
+  border-color: transparent;
+}
+
+.ctrl-btn--logout:hover {
+  background: #2b8a3e;
+  color: #fff;
+}
+
+.ctrl-btn__door-icon {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .ctrl-btn.is-active {
   color: var(--accent);
   border-color: var(--accent);

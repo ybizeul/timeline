@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Go server artifacts
+server/timeline-server
+
+# Local docker volumes/data
+local/
+
+.env.server
+__debug_bin*

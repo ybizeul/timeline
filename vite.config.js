@@ -12,6 +12,14 @@ if (!version) {
 export default defineConfig({
   plugins: [react()],
   base: process.env.BASE_URL || '/',
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.GO_API_TARGET || 'http://127.0.0.1:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
