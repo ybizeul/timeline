@@ -3,7 +3,9 @@ name: Build and push containers
 on:
   push:
     branches:
-      - main
+      - "**"
+    tags:
+      - "*"
   workflow_dispatch:
 
 env:
@@ -43,8 +45,10 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image_name }}
           tags: |
             type=ref,event=branch
+            type=ref,event=tag
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable={{is_tag}}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
