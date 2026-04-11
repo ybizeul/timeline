@@ -114,7 +114,10 @@ export default function App() {
   const [editor, setEditor] = useState({ isOpen: false, event: null, defaultStart: null });
   const [showToday, setShowToday] = useState(true);
   const [showWeekends, setShowWeekends] = useState(true);
-  const [tlHeight, setTlHeight] = useState(() => viewport.tlHeight ?? DEFAULT_TL_HEIGHT);
+  const [tlHeight, setTlHeight] = useState(() => {
+    const restored = Number(viewport.tlHeight);
+    return Number.isFinite(restored) && restored >= MIN_TL_HEIGHT ? restored : DEFAULT_TL_HEIGHT;
+  });
   const resizeDragRef = useRef(null);
 
   // ── Org Chart state ──
@@ -220,7 +223,8 @@ export default function App() {
 
   // Restore tlHeight when switching timelines
   useEffect(() => {
-    setTlHeight(viewport.tlHeight ?? DEFAULT_TL_HEIGHT);
+    const restored = Number(viewport.tlHeight);
+    setTlHeight(Number.isFinite(restored) && restored >= MIN_TL_HEIGHT ? restored : DEFAULT_TL_HEIGHT);
   }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleResizePointerDown = useCallback((e) => {

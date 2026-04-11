@@ -13,6 +13,19 @@ const SCROLL_PAN_FRACTION = 0.2;
 const STORAGE_PREFIX = 'timeline-viewport-';
 const SAVED_POS_PREFIX = 'timeline-savedpos-';
 const DEFAULT_VIEWPORT = { viewStart: NOW - DEFAULT_DURATION / 2, viewEnd: NOW + DEFAULT_DURATION / 2, tlHeight: null };
+const MIN_TIMELINE_HEIGHT = 100;
+
+function normalizeTimelineHeight(value) {
+  const tlHeight = Number(value);
+  return Number.isFinite(tlHeight) && tlHeight >= MIN_TIMELINE_HEIGHT ? tlHeight : null;
+}
+
+function normalizeViewport(viewport) {
+  return {
+    ...viewport,
+    tlHeight: normalizeTimelineHeight(viewport?.tlHeight),
+  };
+}
 
 function loadViewport(activeId) {
   try {
@@ -20,7 +33,7 @@ function loadViewport(activeId) {
     if (raw) {
       const { viewStart, viewEnd, tlHeight } = JSON.parse(raw);
       if (Number.isFinite(viewStart) && Number.isFinite(viewEnd) && viewEnd > viewStart) {
-        return { viewStart, viewEnd, tlHeight: Number.isFinite(tlHeight) ? tlHeight : null };
+        return normalizeViewport({ viewStart, viewEnd, tlHeight });
       }
     }
   } catch { /* ignore */ }
@@ -49,7 +62,7 @@ function parseServerState(data) {
   const tlHeight = Number(viewport.tlHeight);
 
   const normalizedViewport = Number.isFinite(viewStart) && Number.isFinite(viewEnd) && viewEnd > viewStart
-    ? { viewStart, viewEnd, tlHeight: Number.isFinite(tlHeight) ? tlHeight : null }
+    ? normalizeViewport({ viewStart, viewEnd, tlHeight })
     : DEFAULT_VIEWPORT;
 
   let normalizedSaved = null;
@@ -129,7 +142,7 @@ export function useViewport(activeId, useServer = isServerMode) {
       return;
     }
     if (!useServer) {
-      localStorage.setItem(STORAGE_PREFIX + activeId, JSON.stringify(viewport));
+      localStorage.setItem(STORAGE_PREFIX + activeId, JSON.stringify(normalizeViewport(viewport)));
       return;
     }
 
@@ -139,8 +152,9 @@ export function useViewport(activeId, useServer = isServerMode) {
 
     if (persistTimeoutRef.current) clearTimeout(persistTimeoutRef.current);
     persistTimeoutRef.current = setTimeout(() => {
+      const normalized = normalizeViewport(viewport);
       apiPut(`/api/private/timelines/${activeId}/state`, {
-        viewport,
+        viewport: normalized,
         savedPosition: savedPositionRef.current || {},
       }).catch((err) => console.error('Failed to persist timeline state', err));
     }, 180);
@@ -157,7 +171,10 @@ export function useViewport(activeId, useServer = isServerMode) {
   useEffect(() => {
     if (useServer) return;
     const save = () =>
-      localStorage.setItem(STORAGE_PREFIX + activeIdRef.current, JSON.stringify(viewportRef.current));
+      localStorage.setItem(
+        STORAGE_PREFIX + activeIdRef.current,
+        JSON.stringify(normalizeViewport(viewportRef.current)),
+      );
     window.addEventListener('beforeunload', save);
     return () => window.removeEventListener('beforeunload', save);
   }, [useServer]);
@@ -259,8 +276,9 @@ export function useViewport(activeId, useServer = isServerMode) {
     } else if (share.mode === 'timeline' && share.itemId) {
       // Shared links are read-only; keep the value only in memory.
     } else {
+      const normalized = normalizeViewport(viewport);
       apiPut(`/api/private/timelines/${activeId}/state`, {
-        viewport,
+        viewport: normalized,
         savedPosition: savedPositionRef.current,
       }).catch((err) => console.error('Failed to save timeline position', err));
     }
@@ -273,7 +291,7 @@ export function useViewport(activeId, useServer = isServerMode) {
   }, [activeId, clamp, useServer]);
 
   const setTimelineHeight = useCallback((tlHeight) => {
-    setViewport((prev) => ({ ...prev, tlHeight }));
+    setViewport((prev) => ({ ...prev, tlHeight: normalizeTimelineHeight(tlHeight) }));
   }, []);
 
   return {
