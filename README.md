@@ -1,10 +1,17 @@
+*Disclaimer : This project is entirely vibe coded using Claude and Codex*
+
 # Timeline
 
-A local, browser-based app for **timelines** and **org charts** — inspired by [time.graphics](https://time.graphics). Create richly styled timelines and hierarchical org charts, all stored in your browser with no backend required.
+A web app for **timelines** and **org charts** — inspired by [time.graphics](https://time.graphics).
+
+It supports two runtimes:
+
+- **Browser-only mode** (default): local-first usage with data persisted in your browser
+- **Server mode** (Go + MongoDB): API-backed runtime with auth/share endpoints and embedded frontend assets
 
 ![Screenshot](screenshot.png)
 
-You can test it on [https://timeline.tynsoe.org](https://timeline.tynsoe.org).
+You can test the browser storage options on [https://timeline.tynsoe.org](https://timeline.tynsoe.org).
 
 ## Features
 
@@ -45,13 +52,20 @@ You can test it on [https://timeline.tynsoe.org](https://timeline.tynsoe.org).
 ### General
 
 - **Sidebar navigation** — switch between Timeline and Org Chart modes
-- **Persistent storage** — all data (events, people, groups, viewport positions, bookmarks) is saved to `localStorage`; nothing leaves your browser
+- **Persistent storage**
+  - Browser-only mode: all data (events, people, groups, viewport positions, bookmarks) is saved to `localStorage`
+  - Server mode: data is stored in MongoDB through the Go API
 - **Keyboard shortcuts** — `Escape` to close the editor, `Cmd/Ctrl + Enter` to save
 - **Mobile-friendly** — responsive toolbar with overflow menu
 
 ## Getting Started
 
-**Prerequisites:** Node.js 18+
+### Prerequisites
+
+- Node.js 18+
+- For server mode: Go 1.23+ and Docker (for local MongoDB)
+
+### Browser-Only Mode (Frontend)
 
 ```bash
 npm install
@@ -60,7 +74,7 @@ npm run dev
 
 Then open [http://localhost:5173](http://localhost:5173).
 
-### Docker
+### Browser-Only Docker Image
 
 ```bash
 docker build -t timeline .
@@ -69,13 +83,46 @@ docker run -p 8080:80 timeline
 
 Then open [http://localhost:8080](http://localhost:8080).
 
-### Server Version (Go + MongoDB)
+### Server Mode (Go + MongoDB)
 
 This repository now includes an additive server runtime in [server/README.md](server/README.md).
 
-- Existing browser-only container remains unchanged.
-- New server image name/build target: `timeline-server`.
+- Existing browser-only image remains available.
+- Server image name/build target: `timeline-server`.
 - The Go binary serves API routes and embedded Vite assets.
+
+Start local MongoDB:
+
+```bash
+docker compose -f compose.yaml up -d mongodb
+```
+
+Build embedded frontend assets for the server:
+
+```bash
+VITE_RUNTIME_MODE=server VITE_API_BASE= npm run build
+rm -rf server/web/dist
+mkdir -p server/web
+cp -R dist server/web/
+```
+
+Run server locally:
+
+```bash
+cd server
+SESSION_SECRET=dev-secret \
+MONGO_URI=mongodb://localhost:27017 \
+MONGO_DATABASE=timeline \
+go run ./cmd/timeline-server
+```
+
+Then open [http://localhost:8080](http://localhost:8080).
+
+Frontend-only hot-reload against the Go API (optional):
+
+```bash
+VITE_RUNTIME_MODE=server VITE_API_BASE= GO_API_TARGET=http://127.0.0.1:8080 npm run dev
+```
 
 Build server binary:
 
@@ -185,3 +232,5 @@ npm run build
 ```
 
 Output is written to `dist/` and can be served from any static host.
+
+For server mode deployments, copy `dist/` into `server/web/dist/` before building/running the Go server so assets are embedded.
