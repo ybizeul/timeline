@@ -17,12 +17,18 @@ import { useOrgViewportStable as useOrgViewport } from './hooks/useOrgViewport';
 import { exportTimelineSvg } from './utils/exportSvg';
 import { exportOrgChartSvg, exportOrgChartPng } from './utils/exportOrgChartSvg';
 import { computeOrgLayout } from './utils/orgLayout';
+import { layoutEvents, eventDisplayWidthPx } from './utils/eventLayout';
+import { tToX } from './utils/timeScale';
+import { getRectX } from './utils/eventGeometry';
 import { apiGet, apiPost, apiPut } from './utils/api';
 import { isServerMode } from './utils/runtime';
 import './App.css';
 
 const MIN_TL_HEIGHT = 100;
 const DEFAULT_TL_HEIGHT = 320;
+const EVENT_PANEL_FALLBACK_W = 340;
+const EVENT_VISIBILITY_PAD = 12;
+const RANGE_MIN_W = 8;
 
 function getSharedIdFromLocation() {
   try {
@@ -280,6 +286,97 @@ export default function App() {
     deleteEvent(id);
     closeEditor();
   }, [deleteEvent, closeEditor]);
+
+  const handleEventLiveUpdate = useCallback((id, updates) => {
+    updateEvent(id, updates);
+  }, [updateEvent]);
+
+  const handleNudgeEventLane = useCallback((id, direction, draftLane) => {
+    const target = events.find((ev) => ev.id === id);
+    if (!target) return null;
+
+    const width = Math.max(svgWidthRef.current || 0, 1);
+    const getRenderedLane = (eventList) => {
+      const laid = layoutEvents(eventList, viewport.viewStart, viewport.viewEnd, width);
+      return laid.find((item) => item.ev.id === id)?.lane ?? 0;
+    };
+
+    const currentRenderedLane = getRenderedLane(events);
+    const basePreferred = Number.isInteger(draftLane) && draftLane >= 0
+      ? draftLane
+      : (Number.isInteger(target.lane) && target.lane >= 0 ? target.lane : currentRenderedLane);
+
+    const wantUp = direction === 'up';
+    const MAX_STEPS = 120;
+
+    for (let step = 1; step <= MAX_STEPS; step++) {
+      const candidatePreferred = wantUp
+        ? basePreferred + step
+        : Math.max(0, basePreferred - step);
+
+      if (!wantUp && candidatePreferred === 0 && basePreferred - step < 0) break;
+
+      const candidateEvents = events.map((ev) => (ev.id === id ? { ...ev, lane: candidatePreferred } : ev));
+      const candidateRenderedLane = getRenderedLane(candidateEvents);
+      const moved = wantUp
+        ? candidateRenderedLane > currentRenderedLane
+        : candidateRenderedLane < currentRenderedLane;
+
+      if (moved) {
+        updateEvent(id, { lane: candidatePreferred });
+        return candidatePreferred;
+      }
+    }
+
+    // If no visible move is possible, still persist a stronger preference in that direction.
+    const fallbackPreferred = wantUp ? basePreferred + 1 : Math.max(0, basePreferred - 1);
+    updateEvent(id, { lane: fallbackPreferred });
+    return fallbackPreferred;
+  }, [events, updateEvent, viewport.viewEnd, viewport.viewStart, svgWidthRef]);
+
+  const keepEditedEventVisible = useCallback(() => {
+    if (mode !== 'timeline' || !editor.isOpen || !editor.event?.id) return;
+    const target = events.find((ev) => ev.id === editor.event.id);
+    if (!target) return;
+
+    const svgWidth = svgWidthRef.current;
+    if (!svgWidth || svgWidth <= 0) return;
+
+    const laid = layoutEvents(events, viewport.viewStart, viewport.viewEnd, svgWidth);
+    const item = laid.find((it) => it.ev.id === target.id);
+    if (!item) return;
+
+    const start = new Date(target.startDate).getTime();
+    const isPoint = !target.endDate;
+    const align = target.align ?? 'left';
+    const anchorX = tToX(start, viewport.viewStart, viewport.viewEnd, svgWidth);
+    const textW = eventDisplayWidthPx(target);
+
+    let rectX;
+    let rectW;
+    if (isPoint) {
+      rectW = textW;
+      rectX = getRectX(anchorX, rectW, align);
+    } else {
+      const end = new Date(target.endDate).getTime();
+      const endX = tToX(end, viewport.viewStart, viewport.viewEnd, svgWidth);
+      rectW = Math.max(endX - anchorX, RANGE_MIN_W, textW);
+      rectX = anchorX;
+    }
+
+    const panelEl = document.querySelector('.event-editor-panel.is-open');
+    const panelWidth = panelEl?.getBoundingClientRect().width ?? EVENT_PANEL_FALLBACK_W;
+    const visibleRight = Math.max(EVENT_VISIBILITY_PAD, svgWidth - panelWidth - EVENT_VISIBILITY_PAD);
+    const eventRight = rectX + rectW;
+
+    if (eventRight > visibleRight + 1) {
+      panBy(eventRight - visibleRight);
+    }
+  }, [mode, editor.isOpen, editor.event?.id, events, svgWidthRef, viewport.viewStart, viewport.viewEnd, panBy]);
+
+  useEffect(() => {
+    keepEditedEventVisible();
+  }, [keepEditedEventVisible]);
 
   const activeName = timelines.find(t => t.id === activeId)?.name ?? 'Timeline';
 
@@ -671,6 +768,8 @@ export default function App() {
                 defaultStart={editor.defaultStart}
                 isOpen={editor.isOpen}
                 onSave={handleSave}
+                onLiveUpdate={handleEventLiveUpdate}
+                onNudgeLane={handleNudgeEventLane}
                 onDelete={handleDelete}
                 onClose={closeEditor}
               />

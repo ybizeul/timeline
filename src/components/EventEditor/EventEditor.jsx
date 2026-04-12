@@ -24,6 +24,7 @@ function makeDraft(event, defaultStart) {
       color: event.color ?? DEFAULT_COLOR,
       align: event.align ?? 'left',
       style: event.style ?? DEFAULT_EVENT_STYLE,
+      lane: Number.isInteger(event.lane) && event.lane >= 0 ? event.lane : null,
       description: event.description ?? '',
       showNotes: event.showNotes ?? false,
     };
@@ -35,12 +36,13 @@ function makeDraft(event, defaultStart) {
     color: DEFAULT_COLOR,
     align: 'left',
     style: DEFAULT_EVENT_STYLE,
+    lane: null,
     description: '',
     showNotes: false,
   };
 }
 
-export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onClose }) {
+export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onClose, onLiveUpdate, onNudgeLane }) {
   const isEdit = Boolean(event);
   const [draft, setDraft] = useState(() => makeDraft(event, defaultStart));
   const [isDirty, setIsDirty] = useState(false);
@@ -57,6 +59,26 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
     setIsDirty(true);
   }, []);
 
+  const applyLane = useCallback((laneValue) => {
+    const normalized = Number.isInteger(laneValue) && laneValue >= 0 ? laneValue : null;
+    set('lane', normalized);
+    if (event?.id && onLiveUpdate) {
+      onLiveUpdate(event.id, { lane: normalized });
+    }
+  }, [event?.id, onLiveUpdate, set]);
+
+  const nudgeLane = useCallback((direction) => {
+    if (!event?.id || !onNudgeLane) {
+      const current = Number.isInteger(draft.lane) ? draft.lane : 0;
+      applyLane(direction === 'up' ? current + 1 : Math.max(0, current - 1));
+      return;
+    }
+    const applied = onNudgeLane(event.id, direction, draft.lane);
+    if (Number.isInteger(applied) && applied >= 0) {
+      set('lane', applied);
+    }
+  }, [applyLane, draft.lane, event?.id, onNudgeLane, set]);
+
   const handleSave = useCallback(() => {
     if (!draft.title.trim() || !draft.startDate) return;
     onSave({
@@ -67,6 +89,7 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
       color: draft.color,
       align: draft.align,
       style: draft.style,
+      lane: Number.isInteger(draft.lane) && draft.lane >= 0 ? draft.lane : undefined,
       showNotes: draft.showNotes,
       description: draft.description.trim() || undefined,
     });
@@ -226,6 +249,30 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
                   {val.charAt(0).toUpperCase() + val.slice(1)}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="ee-field">
+            <label className="ee-label">Manual position</label>
+            <div className="ee-lane">
+              <button
+                type="button"
+                className="ee-lane-btn"
+                onClick={() => nudgeLane('up')}
+                title="Move up one lane"
+                aria-label="Move up one lane"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="ee-lane-btn"
+                onClick={() => nudgeLane('down')}
+                title="Move down one lane"
+                aria-label="Move down one lane"
+              >
+                ↓
+              </button>
             </div>
           </div>
 

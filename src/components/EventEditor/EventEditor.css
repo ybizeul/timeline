@@ -209,6 +209,34 @@
   font-weight: 600;
 }
 
+/* ── Lane controls ──────────────────────────────────────────── */
+.ee-lane {
+  display: grid;
+  grid-template-columns: 34px 34px;
+  gap: 6px;
+  align-items: center;
+  justify-content: start;
+}
+
+.ee-lane-btn {
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface-el);
+  color: var(--text);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.ee-lane-btn {
+  width: 34px;
+  height: 30px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ee-lane-btn:hover {
+  background: var(--surface-hover);
+}
+
 /* ── Footer ─────────────────────────────────────────────────── */
 .ee-footer {
   padding: 14px 20px;
