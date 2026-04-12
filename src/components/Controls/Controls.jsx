@@ -31,6 +31,7 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
   showToday, onToggleToday,
   showWeekends, onToggleWeekends,
   timelines, activeTimelineId, onSwitchTimeline, onAddTimeline, onRenameTimeline, onDeleteTimeline, onImportTimeline,
+  onExportJson,
   onExportSvg, hasEvents,
   onSavePosition, onRecallPosition, hasSavedPosition }) {
   const { viewStart, viewEnd } = viewport;
@@ -58,6 +59,7 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
         onRename={onRenameTimeline}
         onDelete={onDeleteTimeline}
         onImport={onImportTimeline}
+        onExportJson={onExportJson}
         onExportSvg={onExportSvg}
         hasEvents={hasEvents}
       />

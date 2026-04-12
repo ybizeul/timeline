@@ -14,6 +14,7 @@ import { useOrgCharts } from './hooks/useOrgCharts';
 import { usePeople } from './hooks/usePeople';
 import { useGroups } from './hooks/useGroups';
 import { useOrgViewportStable as useOrgViewport } from './hooks/useOrgViewport';
+import { exportTimelineData } from './utils/io';
 import { exportTimelineSvg } from './utils/exportSvg';
 import { exportOrgChartSvg, exportOrgChartPng } from './utils/exportOrgChartSvg';
 import { computeOrgLayout } from './utils/orgLayout';
@@ -380,6 +381,26 @@ export default function App() {
 
   const activeName = timelines.find(t => t.id === activeId)?.name ?? 'Timeline';
 
+  const handleExportTimelineJson = useCallback(() => {
+    let savedPosition = null;
+    try {
+      const raw = localStorage.getItem(`timeline-savedpos-${activeId}`);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && Number.isFinite(parsed.viewStart) && Number.isFinite(parsed.viewEnd) && parsed.viewEnd > parsed.viewStart) {
+        savedPosition = parsed;
+      }
+    } catch {
+      savedPosition = null;
+    }
+
+    exportTimelineData({
+      name: activeName,
+      events,
+      viewport,
+      savedPosition,
+    });
+  }, [activeId, activeName, events, viewport]);
+
   const handleExportSvg = useCallback(() => {
     exportTimelineSvg({
       events,
@@ -740,6 +761,7 @@ export default function App() {
               onRenameTimeline={readOnly ? () => {} : renameTimeline}
               onDeleteTimeline={readOnly ? () => {} : deleteTimeline}
               onImportTimeline={readOnly ? async () => {} : importTimeline}
+              onExportJson={handleExportTimelineJson}
               onExportSvg={handleExportSvg}
               hasEvents={events.length > 0}
               onSavePosition={savePosition}

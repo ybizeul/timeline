@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { exportTimeline } from '../../utils/io';
 import './TimelineMenu.css';
 
-export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, onDelete, onImport, onExportSvg, hasEvents, isReadOnly = false }) {
+export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, onDelete, onImport, onExportJson, onExportSvg, hasEvents, isReadOnly = false }) {
   const [isOpen, setIsOpen]     = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -128,7 +127,7 @@ export function TimelineMenu({ timelines, activeId, onSwitch, onAdd, onRename, o
           <div className="tl-menu__section-label">Export / Import</div>
           <button
             className="tl-menu__item"
-            onClick={() => { exportTimeline(activeId); setIsOpen(false); }}
+            onClick={() => { onExportJson(); setIsOpen(false); }}
           >
             Export JSON
           </button>

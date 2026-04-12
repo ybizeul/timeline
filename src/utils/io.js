@@ -5,6 +5,30 @@ function sanitizeFilename(name) {
   return name.replace(/[^a-zA-Z0-9_\-. ]/g, '_').trim() || 'timeline';
 }
 
+/** Export timeline payload as a JSON file download. */
+export function exportTimelineData({ name = 'Timeline', events = [], viewport = null, savedPosition = null } = {}) {
+  const safeName = typeof name === 'string' && name.trim() ? name.trim() : 'Timeline';
+  const data = {
+    version: 1,
+    timeline: {
+      name: safeName,
+      events: Array.isArray(events) ? events : [],
+      viewport,
+      savedPosition,
+    },
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${sanitizeFilename(safeName)}.timeline.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 /** Export the active timeline as a JSON file download. */
 export function exportTimeline(activeId) {
   const indexRaw = localStorage.getItem('timelines_index');
@@ -21,20 +45,7 @@ export function exportTimeline(activeId) {
   const savedPosRaw = localStorage.getItem(`timeline-savedpos-${activeId}`);
   const savedPosition = savedPosRaw ? JSON.parse(savedPosRaw) : null;
 
-  const data = {
-    version: 1,
-    timeline: { name, events, viewport, savedPosition },
-  };
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${sanitizeFilename(name)}.timeline.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  exportTimelineData({ name, events, viewport, savedPosition });
 }
 
 /** Parse and validate a .timeline.json File. Returns { name, events, viewport } or throws. */
