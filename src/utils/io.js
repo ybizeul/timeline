@@ -1,4 +1,4 @@
-const ALLOWED_EVENT_FIELDS = ['title', 'startDate', 'endDate', 'color', 'align', 'style', 'showNotes', 'description'];
+const ALLOWED_EVENT_FIELDS = ['title', 'startDate', 'endDate', 'color', 'align', 'style', 'showNotes', 'description', 'lane'];
 const REQUIRED_EVENT_FIELDS = ['title', 'startDate'];
 
 function sanitizeFilename(name) {
@@ -69,6 +69,10 @@ export async function parseTimelineFile(file) {
     const clean = { id: crypto.randomUUID() };
     for (const field of ALLOWED_EVENT_FIELDS) {
       if (ev[field] !== undefined) clean[field] = ev[field];
+    }
+    if (clean.lane !== undefined) {
+      const lane = Number(clean.lane);
+      clean.lane = Number.isInteger(lane) && lane >= 0 ? lane : 0;
     }
     return clean;
   });
