@@ -36,6 +36,13 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
   onSavePosition, onRecallPosition, hasSavedPosition }) {
   const { viewStart, viewEnd } = viewport;
   const periodLabel = useMemo(() => formatPeriod(viewStart, viewEnd), [viewStart, viewEnd]);
+  const timeZone = useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      return '';
+    }
+  }, []);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef(null);
 
@@ -154,6 +161,7 @@ export function Controls({ viewport, onZoomIn, onZoomOut, onScrollLeft, onScroll
       </div>
 
       <span className="controls__period">{periodLabel}</span>
+      {timeZone && <span className="controls__timezone">{timeZone}</span>}
       <div className="controls__spacer" />
       {!isReadOnly && (
         <>

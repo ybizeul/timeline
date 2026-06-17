@@ -18,6 +18,13 @@
   text-align: center;
 }
 
+.controls__timezone {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
 .controls__sep {
   width: 1px;
   height: 20px;
