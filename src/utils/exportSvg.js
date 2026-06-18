@@ -357,6 +357,18 @@ export function exportTimelineSvg({ events, viewport, svgWidth, timelineName, sh
     }
   }
 
+  // Background tints for events with tintBackground enabled
+  for (const ev of events) {
+    if (ev.tintBackground && ev.endDate) {
+      const startX = toX(new Date(ev.startDate).getTime());
+      const endX = toX(new Date(ev.endDate).getTime());
+      const width = Math.max(endX - startX, 0);
+      if (width > 0) {
+        svg += svgRect(startX, 0, width, axisY, ev.color, `opacity="0.08"`);
+      }
+    }
+  }
+
   // Events
   for (const item of sortedLaid) {
     svg += renderEvent(item, exportViewStart, exportViewEnd, exportWidth, axisY, colors);

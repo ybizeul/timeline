@@ -1,4 +1,4 @@
-const ALLOWED_EVENT_FIELDS = ['title', 'startDate', 'endDate', 'color', 'align', 'style', 'showNotes', 'description', 'lane'];
+const ALLOWED_EVENT_FIELDS = ['title', 'startDate', 'endDate', 'color', 'align', 'style', 'showNotes', 'description', 'lane', 'tintBackground'];
 const REQUIRED_EVENT_FIELDS = ['title', 'startDate'];
 
 function sanitizeFilename(name) {

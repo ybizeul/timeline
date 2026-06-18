@@ -27,6 +27,7 @@ function makeDraft(event, defaultStart) {
       lane: Number.isInteger(event.lane) && event.lane >= 0 ? event.lane : null,
       description: event.description ?? '',
       showNotes: event.showNotes ?? false,
+      tintBackground: event.tintBackground ?? false,
     };
   }
   return {
@@ -39,6 +40,7 @@ function makeDraft(event, defaultStart) {
     lane: null,
     description: '',
     showNotes: false,
+    tintBackground: false,
   };
 }
 
@@ -92,6 +94,7 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
       lane: Number.isInteger(draft.lane) && draft.lane >= 0 ? draft.lane : undefined,
       showNotes: draft.showNotes,
       description: draft.description.trim() || undefined,
+      tintBackground: draft.tintBackground || undefined,
     });
     setIsDirty(false);
   }, [draft, event, onSave]);
@@ -299,6 +302,15 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
                 onChange={(e) => set('showNotes', e.target.checked)}
               />
               Show on timeline
+            </label>
+            <label className="ee-checkbox-label">
+              <input
+                type="checkbox"
+                checked={draft.tintBackground && Boolean(draft.endDate)}
+                disabled={!draft.endDate}
+                onChange={(e) => set('tintBackground', e.target.checked)}
+              />
+              Tint background
             </label>
           </div>
         </div>
