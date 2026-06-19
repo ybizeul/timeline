@@ -39,6 +39,21 @@ export function EventLayer({ events, viewStart, viewEnd, svgWidth, axisY, onEven
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
+    // Delay hiding to allow mouse to move to tooltip
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredEvent(null);
+    }, 150);
+  };
+
+  const handleTooltipMouseEnter = () => {
+    // Cancel pending hide
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+  };
+
+  const handleTooltipMouseLeave = () => {
     setHoveredEvent(null);
   };
 
@@ -98,7 +113,13 @@ export function EventLayer({ events, viewStart, viewEnd, svgWidth, axisY, onEven
       
       {/* Render tooltip as HTML overlay directly to body using portal */}
       {hoveredEvent && createPortal(
-        <EventTooltip ev={hoveredEvent} clientX={tooltipPos.x} clientY={tooltipPos.y} />,
+        <EventTooltip 
+          ev={hoveredEvent} 
+          clientX={tooltipPos.x} 
+          clientY={tooltipPos.y}
+          onMouseEnter={handleTooltipMouseEnter}
+          onMouseLeave={handleTooltipMouseLeave}
+        />,
         document.body
       )}
     </g>

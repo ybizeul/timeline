@@ -1,6 +1,6 @@
 import { tToX } from '../../utils/timeScale';
 import { eventDisplayWidthPx, PAD_H, PAD_V, FONT_SIZE, NOTES_GAP, NOTES_LINE_H } from '../../utils/eventLayout';
-import { calcEventHeight, notesLines, getRectX, alignedText, eventShapePath, CALLOUT_EDGE_PAD } from '../../utils/eventGeometry';
+import { calcEventHeight, notesLines, getRectX, alignedText, eventShapePath } from '../../utils/eventGeometry';
 
 const EVENT_MIN_WIDTH  = 8;
 const CONNECTOR_MARGIN = 4;
@@ -348,7 +348,7 @@ const VARIANT_COMPONENTS = {
 };
 
 // ── Tooltip Component ─────────────────────────────────────────────────────────
-export function EventTooltip({ ev, clientX, clientY }) {
+export function EventTooltip({ ev, clientX, clientY, onMouseEnter, onMouseLeave }) {
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -374,41 +374,52 @@ export function EventTooltip({ ev, clientX, clientY }) {
     return dateFormatted;
   };
 
-  // Build tooltip content
-  const lines = [];
-  
-  // Title
-  lines.push({ text: ev.title, bold: true });
-  
-  // Date(s) and Time
-  if (ev.endDate) {
-    lines.push({ text: `${formatDateTime(ev.startDate)} - ${formatDateTime(ev.endDate)}`, bold: false });
-  } else {
-    lines.push({ text: formatDateTime(ev.startDate), bold: false });
-  }
-  
-  // Description/notes if available
-  if (ev.description && ev.description.trim()) {
-    lines.push({ text: '', bold: false }); // Empty line for spacing
-    const noteLines = ev.description.split('\n').slice(0, 5); // Max 5 lines
-    noteLines.forEach(line => {
-      if (line.trim()) {
-        lines.push({ text: line.length > 50 ? line.substring(0, 47) + '...' : line, bold: false });
-      }
-    });
-  }
-  
-  // Person/Group if available
-  if (ev.personId || ev.groupId) {
-    const label = ev.personId ? 'Person' : 'Group';
-    lines.push({ text: `${label}: ${ev.personId || ev.groupId}`, bold: false, small: true });
-  }
+  const handleCopy = () => {
+    const parts = [
+      `Title: ${ev.title}`,
+      `Start: ${formatDateTime(ev.startDate)}`,
+    ];
+    
+    if (ev.endDate) {
+      parts.push(`End: ${formatDateTime(ev.endDate)}`);
+    }
+    
+    if (ev.description && ev.description.trim()) {
+      parts.push(`Description: ${ev.description.trim()}`);
+    }
+    
+    if (ev.personId || ev.groupId) {
+      const label = ev.personId ? 'Person' : 'Group';
+      parts.push(`${label}: ${ev.personId || ev.groupId}`);
+    }
+    
+    navigator.clipboard.writeText(parts.join('\n')).catch(() => {});
+  };
+
+  const handleCopyStartDate = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(formatDateTime(ev.startDate)).catch(() => {});
+  };
+
+  const handleCopyEndDate = (e) => {
+    e.stopPropagation();
+    if (ev.endDate) {
+      navigator.clipboard.writeText(formatDateTime(ev.endDate)).catch(() => {});
+    }
+  };
+
+  const handleCopyDescription = (e) => {
+    e.stopPropagation();
+    if (ev.description && ev.description.trim()) {
+      navigator.clipboard.writeText(ev.description.trim()).catch(() => {});
+    }
+  };
 
   // Position tooltip near cursor with bounds checking
   const offsetX = 15;
   const offsetY = 15;
-  const tooltipWidth = 300;
-  const estimatedHeight = lines.length * 20 + 24; // Rough estimate
+  const tooltipWidth = 320;
+  const estimatedHeight = 200; // More generous estimate
   
   // Calculate position using fixed positioning (relative to viewport)
   let left = clientX + offsetX;
@@ -435,38 +446,278 @@ export function EventTooltip({ ev, clientX, clientY }) {
   return (
     <div
       className="event-tooltip"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       style={{
         position: 'fixed',
         left: `${left}px`,
         top: `${top}px`,
-        backgroundColor: 'rgba(30, 30, 30, 0.95)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '6px',
-        padding: '12px',
+        backgroundColor: 'rgba(20, 20, 24, 0.98)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        borderRadius: '8px',
         maxWidth: `${tooltipWidth}px`,
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.4)',
-        pointerEvents: 'none',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1)',
+        pointerEvents: 'auto',
         zIndex: 10000,
         fontFamily: 'inherit',
+        overflow: 'hidden',
       }}
     >
-      {lines.map((line, i) => (
-        line.text ? (
+      {/* Header with title and copy button */}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${ev.color}22, ${ev.color}11)`,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          padding: '12px 14px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '8px',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div
-            key={i}
             style={{
-              color: 'rgba(255, 255, 255, 0.95)',
-              fontSize: line.small ? '11px' : '13px',
-              fontWeight: line.bold ? '600' : '400',
-              lineHeight: '18px',
+              color: 'rgba(255, 255, 255, 0.98)',
+              fontSize: '14px',
+              fontWeight: '600',
+              lineHeight: '1.4',
+              wordBreak: 'break-word',
             }}
           >
-            {line.text}
+            {ev.title}
           </div>
-        ) : (
-          <div key={i} style={{ height: '6px' }} />
-        )
-      ))}
+        </div>
+        <button
+          onClick={handleCopy}
+          style={{
+            flexShrink: 0,
+            width: '24px',
+            height: '24px',
+            padding: 0,
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: '4px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            color: 'rgba(255, 255, 255, 0.7)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.95)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+          }}
+          title="Copy event details"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Dates section */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {/* Start date */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            <button
+              onClick={handleCopyStartDate}
+              title="Copy start date"
+              style={{
+                flexShrink: 0,
+                marginTop: '2px',
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                opacity: 0.7,
+                color: 'rgba(255, 255, 255, 0.7)',
+                display: 'flex',
+                transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '0.7';
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10.5 21h-4.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3" />
+                <path d="M16 3v4" />
+                <path d="M8 3v4" />
+                <path d="M4 11h10" />
+                <path d="M18 18m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                <path d="M18 16.5v1.5l.5 .5" />
+              </svg>
+            </button>
+            <div
+              style={{
+                color: 'rgba(255, 255, 255, 0.85)',
+                fontSize: '13px',
+                lineHeight: '20px',
+                flex: 1,
+              }}
+            >
+              {formatDateTime(ev.startDate)}
+            </div>
+          </div>
+
+          {/* End date */}
+          {ev.endDate && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+              <button
+                onClick={handleCopyEndDate}
+                title="Copy end date"
+                style={{
+                  flexShrink: 0,
+                  marginTop: '2px',
+                  padding: 0,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  opacity: 0.7,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  display: 'flex',
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0.7';
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.5 21h-4.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3" />
+                  <path d="M16 3v4" />
+                  <path d="M8 3v4" />
+                  <path d="M4 11h10" />
+                  <path d="M18 18m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                  <path d="M18 16.5v1.5l.5 .5" />
+                </svg>
+              </button>
+              <div
+                style={{
+                  color: 'rgba(255, 255, 255, 0.85)',
+                  fontSize: '13px',
+                  lineHeight: '20px',
+                  flex: 1,
+                }}
+              >
+                {formatDateTime(ev.endDate)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Description section */}
+        {ev.description && ev.description.trim() && (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            <button
+              onClick={handleCopyDescription}
+              title="Copy description"
+              style={{
+                flexShrink: 0,
+                marginTop: '2px',
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                opacity: 0.7,
+                color: 'rgba(255, 255, 255, 0.7)',
+                display: 'flex',
+                transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '0.7';
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 3m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z" />
+                <path d="M9 7l6 0" />
+                <path d="M9 11l6 0" />
+                <path d="M9 15l4 0" />
+              </svg>
+            </button>
+            <div
+              style={{
+                color: 'rgba(255, 255, 255, 0.75)',
+                fontSize: '12px',
+                lineHeight: '18px',
+                flex: 1,
+                maxHeight: '90px',
+                overflow: 'hidden',
+              }}
+            >
+              {ev.description.split('\n').slice(0, 5).map((line, i) => (
+                line.trim() ? (
+                  <div key={i} style={{ marginBottom: i < 4 ? '2px' : 0 }}>
+                    {line.length > 60 ? line.substring(0, 57) + '...' : line}
+                  </div>
+                ) : null
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Person/Group section */}
+        {(ev.personId || ev.groupId) && (
+          <div
+            style={{
+              color: 'rgba(255, 255, 255, 0.5)',
+              fontSize: '11px',
+              paddingTop: '6px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            {ev.personId ? '👤' : '👥'} {ev.personId || ev.groupId}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
