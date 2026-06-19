@@ -58,6 +58,7 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
     const heightPx = eventHeightPx(ev);
     const textW = eventDisplayWidthPx(ev);
     const style = ev.style ?? 'solid';
+    // No stroke margin for outline events - their strokes can touch without visual collision
     const strokeMargin = 0;
 
     const anchorPx = (start - viewStart) * pxPerMs;
@@ -78,9 +79,15 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
       }
     } else {
       const endPx = (rawEnd - viewStart) * pxPerMs;
-      const rangeW = Math.max(endPx - anchorPx, MIN_EVENT_PX);
+      // For label style, use exact time boundaries for collision detection
+      // For solid/outline styles, apply MIN_EVENT_PX to ensure visibility
+      const actualRangeW = endPx - anchorPx;
+      const rangeW = style === 'label' ? actualRangeW : Math.max(actualRangeW, MIN_EVENT_PX);
       leftPx = anchorPx - strokeMargin;
-      rightPx = anchorPx + Math.max(rangeW, textW) + strokeMargin;
+      // For label style, use time-based width; for solid/outline, include text width
+      rightPx = style === 'label'
+        ? anchorPx + rangeW + strokeMargin
+        : anchorPx + Math.max(rangeW, textW) + strokeMargin;
     }
 
     return { ev, start, end: rawEnd, leftPx, rightPx, heightPx: heightPx + strokeMargin * 2 };
@@ -116,7 +123,20 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
     const yBase = laneBase(lane);
     const yTop = yBase + item.heightPx;
     return !placed.some((p) => {
-      const hOverlap = p.leftPx < item.rightPx + GAP_X && p.rightPx + GAP_X > item.leftPx;
+      // For label events, allow them to be adjacent (no gap)
+      const itemStyle = item.ev.style ?? 'solid';
+      const placedStyle = p.ev?.style ?? 'solid';
+      const bothLabel = itemStyle === 'label' && placedStyle === 'label';
+      
+      // Calculate actual overlap amount (negative means gap, positive means overlap)
+      const overlapAmount = Math.min(p.rightPx, item.rightPx) - Math.max(p.leftPx, item.leftPx);
+      
+      // For label events: only collide if they actually overlap (> 0.1px)
+      // For other events: collide if closer than GAP_X pixels
+      const hOverlap = bothLabel 
+        ? overlapAmount > 0.1  // Tolerance for floating-point precision and date/time rounding
+        : overlapAmount > -GAP_X;
+      
       if (!hOverlap) return false;
       const vOverlap = yBase < p.yTop + GAP_Y && yTop + GAP_Y > p.yBase;
       return vOverlap;
@@ -151,7 +171,7 @@ export function layoutEvents(events, viewStart, viewEnd, svgWidth) {
     const lane = chooseLane(item);
     const yBase = laneBase(lane);
     const yTop = yBase + item.heightPx;
-    placed.push({ leftPx: item.leftPx, rightPx: item.rightPx, lane, yBase, yTop });
+    placed.push({ leftPx: item.leftPx, rightPx: item.rightPx, lane, yBase, yTop, ev: item.ev });
     assignedLaneById.set(item.ev.id, lane);
   }
 

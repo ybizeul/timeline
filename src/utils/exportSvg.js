@@ -168,8 +168,8 @@ function renderEventLabel(ev, anchorX, rectX, width, rangeEndX, yTop, yBottom, e
       svg += `<circle cx="${anchorX}" cy="${yBottom + CONNECTOR_MARGIN}" r="2.5" fill="${esc(ev.color)}" opacity="0.7"/>`;
     }
   } else {
-    svg += svgLine(anchorX, barY, rangeEndX, barY, ev.color, 2, `opacity="0.7"`);
-    svg += bracketsSvg(anchorX, rangeEndX, yTop, barY - yTop, ev.color, 0, 0.45);
+    svg += svgLine(anchorX + 1, barY, rangeEndX - 1, barY, ev.color, 2, `opacity="0.7"`);
+    svg += bracketsSvg(anchorX, rangeEndX, yTop, barY - yTop, ev.color, 1, 0.45);
   }
   svg += `<text x="${textX}" y="${titleY}" text-anchor="${textAnchor}" dominant-baseline="central" fill="${esc(ev.color)}" font-size="${FONT_SIZE}" font-weight="600" font-family="${FONT_FAMILY}">${esc(ev.title)}</text>`;
   if (lines.length > 0) {
@@ -187,18 +187,25 @@ function renderEvent(item, viewStart, viewEnd, exportWidth, axisY, colors) {
   const align = ev.align ?? 'left';
   const lines = notesLines(ev);
   const evH = calcEventHeight(lines.length);
+  const style = ev.style ?? 'solid';
 
   const anchorX = tToX(start, viewStart, viewEnd, exportWidth);
   const isPoint = !ev.endDate;
   const rangeEndX = !isPoint ? tToX(end, viewStart, viewEnd, exportWidth) : anchorX;
   const textW = eventDisplayWidthPx(ev);
-  const width = isPoint ? textW : Math.max(rangeEndX - anchorX, EVENT_MIN_WIDTH, textW);
+  
+  // For label style, use exact time span; for solid/outline, include text width
+  const width = isPoint
+    ? textW
+    : (style === 'label'
+        ? rangeEndX - anchorX  // Use exact time span for label
+        : Math.max(rangeEndX - anchorX, EVENT_MIN_WIDTH, textW));
+  
   const rectX = isPoint ? getRectX(anchorX, width, align) : anchorX;
 
   const yBottom = axisY - CONNECTOR_MARGIN;
   const yTop = yBottom - yOffset;
 
-  const style = ev.style ?? 'solid';
   if (style === 'outline') return renderEventOutline(ev, anchorX, rectX, width, yTop, yBottom, evH, isPoint);
   if (style === 'label') return renderEventLabel(ev, anchorX, rectX, width, rangeEndX, yTop, yBottom, evH, isPoint);
   return renderEventSolid(ev, anchorX, rectX, width, yTop, yBottom, evH, isPoint);

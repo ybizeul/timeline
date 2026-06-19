@@ -25,15 +25,21 @@ export const DEFAULT_EVENT_STYLE = 'solid';
 export function useEventGeometry(layoutItem, viewStart, viewEnd, svgWidth, axisY) {
   const { ev, start, end, yOffset } = layoutItem;
   const align = ev.align ?? 'left';
+  const style = ev.style ?? 'solid';
   const evH = eventHeight(ev);
 
   const anchorX = tToX(start, viewStart, viewEnd, svgWidth);
   const isPoint = !ev.endDate;
   const rangeEndX = !isPoint ? tToX(end, viewStart, viewEnd, svgWidth) : anchorX;
   const textW = eventDisplayWidthPx(ev);
+  
+  // For label style, use exact time span; for solid/outline, include text width
   const width = isPoint
     ? textW
-    : Math.max(rangeEndX - anchorX, EVENT_MIN_WIDTH, textW);
+    : (style === 'label'
+        ? rangeEndX - anchorX  // Use exact time span for label
+        : Math.max(rangeEndX - anchorX, EVENT_MIN_WIDTH, textW));
+  
   // Alignment only shifts point events; range events always span exact dates
   const rectX = isPoint ? getRectX(anchorX, width, align) : anchorX;
 
@@ -294,13 +300,13 @@ function EventItemLabel({ ev, geo }) {
         )
       ) : (
         <>
-          {/* Horizontal underline spanning the time range */}
+          {/* Horizontal underline spanning the time range with 1px gap */}
           <line
-            x1={anchorX} y1={barY}
-            x2={rangeEndX} y2={barY}
+            x1={anchorX + 1} y1={barY}
+            x2={rangeEndX - 1} y2={barY}
             stroke={ev.color} strokeWidth={2} opacity={0.7}
           />
-          <RangeBrackets x1={anchorX} x2={rangeEndX} yTop={yTop} height={barY - yTop} color={ev.color} opacity={0.45} />
+          <RangeBrackets x1={anchorX} x2={rangeEndX} yTop={yTop} height={barY - yTop} color={ev.color} inset={1} opacity={0.45} />
         </>
       )}
       {/* Invisible hit-area */}
