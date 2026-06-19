@@ -1,6 +1,7 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { layoutEvents } from '../../utils/eventLayout';
-import { EventItem } from './EventItem';
+import { EventItem, EventTooltip } from './EventItem';
 import { tToX } from '../../utils/timeScale';
 
 export function EventLayer({ events, viewStart, viewEnd, svgWidth, axisY, onEventClick, wasDragging }) {
@@ -8,6 +9,38 @@ export function EventLayer({ events, viewStart, viewEnd, svgWidth, axisY, onEven
   // measurements match the actual SVG rendering width.
   const [fontsReady, setFontsReady] = useState(false);
   useEffect(() => { document.fonts.ready.then(() => setFontsReady(true)); }, []);
+  
+  // Tooltip state
+  const [hoveredEvent, setHoveredEvent] = useState(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const hoverTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    // Cleanup timeout on unmount
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleEventMouseEnter = (ev, clientX, clientY) => {
+    // Store absolute client coordinates for tooltip
+    setTooltipPos({ x: clientX, y: clientY });
+    // Show tooltip after 500ms
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredEvent(ev);
+    }, 500);
+  };
+
+  const handleEventMouseLeave = () => {
+    // Cancel pending tooltip
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredEvent(null);
+  };
 
   const laid = useMemo(
     () => {
@@ -58,8 +91,16 @@ export function EventLayer({ events, viewStart, viewEnd, svgWidth, axisY, onEven
           axisY={axisY}
           onClick={onEventClick}
           wasDragging={wasDragging}
+          onMouseEnter={handleEventMouseEnter}
+          onMouseLeave={handleEventMouseLeave}
         />
       ))}
+      
+      {/* Render tooltip as HTML overlay directly to body using portal */}
+      {hoveredEvent && createPortal(
+        <EventTooltip ev={hoveredEvent} clientX={tooltipPos.x} clientY={tooltipPos.y} />,
+        document.body
+      )}
     </g>
   );
 }

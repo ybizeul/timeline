@@ -347,11 +347,144 @@ const VARIANT_COMPONENTS = {
   label:   EventItemLabel,
 };
 
+// ── Tooltip Component ─────────────────────────────────────────────────────────
+export function EventTooltip({ ev, clientX, clientY }) {
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    
+    // Check if time is meaningful (not midnight)
+    const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0;
+    
+    const dateFormatted = date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    
+    if (hasTime) {
+      const timeFormatted = date.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true
+      });
+      return `${dateFormatted} at ${timeFormatted}`;
+    }
+    
+    return dateFormatted;
+  };
+
+  // Build tooltip content
+  const lines = [];
+  
+  // Title
+  lines.push({ text: ev.title, bold: true });
+  
+  // Date(s) and Time
+  if (ev.endDate) {
+    lines.push({ text: `${formatDateTime(ev.startDate)} - ${formatDateTime(ev.endDate)}`, bold: false });
+  } else {
+    lines.push({ text: formatDateTime(ev.startDate), bold: false });
+  }
+  
+  // Description/notes if available
+  if (ev.description && ev.description.trim()) {
+    lines.push({ text: '', bold: false }); // Empty line for spacing
+    const noteLines = ev.description.split('\n').slice(0, 5); // Max 5 lines
+    noteLines.forEach(line => {
+      if (line.trim()) {
+        lines.push({ text: line.length > 50 ? line.substring(0, 47) + '...' : line, bold: false });
+      }
+    });
+  }
+  
+  // Person/Group if available
+  if (ev.personId || ev.groupId) {
+    const label = ev.personId ? 'Person' : 'Group';
+    lines.push({ text: `${label}: ${ev.personId || ev.groupId}`, bold: false, small: true });
+  }
+
+  // Position tooltip near cursor with bounds checking
+  const offsetX = 15;
+  const offsetY = 15;
+  const tooltipWidth = 300;
+  const estimatedHeight = lines.length * 20 + 24; // Rough estimate
+  
+  // Calculate position using fixed positioning (relative to viewport)
+  let left = clientX + offsetX;
+  let top = clientY + offsetY;
+  
+  // Get viewport dimensions for bounds checking
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  // Adjust if tooltip would go off right edge
+  if (left + tooltipWidth > viewportWidth - 20) {
+    left = clientX - tooltipWidth - offsetX;
+  }
+  
+  // Adjust if tooltip would go off bottom
+  if (top + estimatedHeight > viewportHeight - 20) {
+    top = clientY - estimatedHeight - offsetY;
+  }
+  
+  // Make sure it doesn't go off left or top
+  left = Math.max(10, left);
+  top = Math.max(10, top);
+
+  return (
+    <div
+      className="event-tooltip"
+      style={{
+        position: 'fixed',
+        left: `${left}px`,
+        top: `${top}px`,
+        backgroundColor: 'rgba(30, 30, 30, 0.95)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '6px',
+        padding: '12px',
+        maxWidth: `${tooltipWidth}px`,
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.4)',
+        pointerEvents: 'none',
+        zIndex: 10000,
+        fontFamily: 'inherit',
+      }}
+    >
+      {lines.map((line, i) => (
+        line.text ? (
+          <div
+            key={i}
+            style={{
+              color: 'rgba(255, 255, 255, 0.95)',
+              fontSize: line.small ? '11px' : '13px',
+              fontWeight: line.bold ? '600' : '400',
+              lineHeight: '18px',
+            }}
+          >
+            {line.text}
+          </div>
+        ) : (
+          <div key={i} style={{ height: '6px' }} />
+        )
+      ))}
+    </div>
+  );
+}
+
 // ── Public component ──────────────────────────────────────────────────────────
-export function EventItem({ layoutItem, viewStart, viewEnd, svgWidth, axisY, onClick, wasDragging }) {
+export function EventItem({ layoutItem, viewStart, viewEnd, svgWidth, axisY, onClick, wasDragging, onMouseEnter, onMouseLeave }) {
   const { ev } = layoutItem;
   const geo = useEventGeometry(layoutItem, viewStart, viewEnd, svgWidth, axisY);
   const { rectX, width } = geo;
+
+  const handleMouseEnter = (e) => {
+    // Pass client coordinates to parent
+    onMouseEnter(ev, e.clientX, e.clientY);
+  };
+
+  const handleMouseLeave = () => {
+    onMouseLeave();
+  };
 
   if (rectX > svgWidth + 50 || rectX + width < -50) return null;
 
@@ -361,6 +494,8 @@ export function EventItem({ layoutItem, viewStart, viewEnd, svgWidth, axisY, onC
     <g
       className="event-item"
       onClick={() => { if (!wasDragging.current) onClick(ev); }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       style={{ cursor: 'pointer' }}
     >
       <Variant ev={ev} geo={geo} />
