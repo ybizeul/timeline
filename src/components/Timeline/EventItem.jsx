@@ -535,32 +535,32 @@ export function EventTooltip({ ev, clientX, clientY, onMouseEnter, onMouseLeave 
     }
   };
 
-  // Position tooltip near cursor with bounds checking
-  const offsetX = 15;
-  const offsetY = 15;
+  // Position tooltip directly under the cursor so it doesn't lose focus
+  const offsetY = 20; // Distance below cursor
   const tooltipWidth = 320;
-  const estimatedHeight = 200; // More generous estimate
   
   // Calculate position using fixed positioning (relative to viewport)
-  let left = clientX + offsetX;
+  // Center horizontally under the cursor, offset vertically below
+  let left = clientX - (tooltipWidth / 2);
   let top = clientY + offsetY;
   
-  // Get viewport dimensions for bounds checking
+  // Get viewport dimensions for minimal bounds checking
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   
-  // Adjust if tooltip would go off right edge
-  if (left + tooltipWidth > viewportWidth - 20) {
-    left = clientX - tooltipWidth - offsetX;
+  // Only adjust if tooltip would completely go off-screen
+  // Keep it predictable - just nudge it back into view
+  if (left < 10) {
+    left = 10;
+  } else if (left + tooltipWidth > viewportWidth - 10) {
+    left = viewportWidth - tooltipWidth - 10;
   }
   
-  // Adjust if tooltip would go off bottom
-  if (top + estimatedHeight > viewportHeight - 20) {
-    top = clientY - estimatedHeight - offsetY;
+  if (top > viewportHeight - 100) {
+    top = viewportHeight - 100;
   }
   
-  // Make sure it doesn't go off left or top
-  left = Math.max(10, left);
+  // Ensure minimum padding from top edge
   top = Math.max(10, top);
 
   return (
