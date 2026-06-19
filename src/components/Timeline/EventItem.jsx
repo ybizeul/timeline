@@ -17,6 +17,7 @@ export const EVENT_STYLES = [
   { id: 'solid',   label: 'Solid' },
   { id: 'outline', label: 'Outline' },
   { id: 'label',   label: 'Label only' },
+  { id: 'line',    label: 'Line' },
 ];
 export const DEFAULT_EVENT_STYLE = 'solid';
 
@@ -340,11 +341,130 @@ function EventItemLabel({ ev, geo }) {
   );
 }
 
+// ── Variant: line (vertical line spanning timeline height) ──────────────────
+const LINE_TITLE_Y = 20;  // Y position for title at top of timeline
+const LINE_TITLE_OFFSET = 8; // Horizontal offset from line for title
+const LINE_STROKE_WIDTH = 1;
+
+function EventItemLine({ ev, geo }) {
+  const { anchorX, rangeEndX, isPoint } = geo;
+  const align = ev.align ?? 'center';
+  const lines = notesLines(ev);
+
+  // Round to integer pixels for consistent line rendering
+  const x1 = Math.round(anchorX);
+  const x2 = Math.round(rangeEndX);
+
+  // Always position title at top of timeline
+  let textX, textAnchor;
+  
+  if (isPoint) {
+    // Single line - use alignment to position title
+    if (align === 'left') {
+      textX = x1 + LINE_TITLE_OFFSET;
+      textAnchor = 'start';
+    } else if (align === 'right') {
+      textX = x1 - LINE_TITLE_OFFSET;
+      textAnchor = 'end';
+    } else {
+      // center
+      textX = x1;
+      textAnchor = 'middle';
+    }
+  } else {
+    // Two lines - center title between them based on alignment
+    const midX = (x1 + x2) / 2;
+    if (align === 'left') {
+      textX = x1 + LINE_TITLE_OFFSET;
+      textAnchor = 'start';
+    } else if (align === 'right') {
+      textX = x2 - LINE_TITLE_OFFSET;
+      textAnchor = 'end';
+    } else {
+      // center
+      textX = midX;
+      textAnchor = 'middle';
+    }
+  }
+
+  const notesY = LINE_TITLE_Y + NOTES_GAP + NOTES_LINE_H / 2;
+
+  return (
+    <>
+      {/* Start date line */}
+      <line
+        x1={x1} y1={0}
+        x2={x1} y2={geo.yBottom + CONNECTOR_MARGIN}
+        stroke={ev.color}
+        strokeWidth={LINE_STROKE_WIDTH}
+        opacity={0.85}
+        shapeRendering="crispEdges"
+      />
+      
+      {/* End date line (if range event) */}
+      {!isPoint && (
+        <line
+          x1={x2} y1={0}
+          x2={x2} y2={geo.yBottom + CONNECTOR_MARGIN}
+          stroke={ev.color}
+          strokeWidth={LINE_STROKE_WIDTH}
+          opacity={0.85}
+          shapeRendering="crispEdges"
+        />
+      )}
+      
+      {/* Title at top */}
+      <text
+        x={textX}
+        y={LINE_TITLE_Y}
+        dominantBaseline="central"
+        textAnchor={textAnchor}
+        fill={ev.color}
+        fontSize={FONT_SIZE}
+        fontWeight="600"
+        fontFamily="inherit"
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        {ev.title}
+      </text>
+      
+      {/* Notes below title */}
+      {lines.length > 0 && (
+        <text
+          x={textX}
+          y={notesY}
+          dominantBaseline="central"
+          textAnchor={textAnchor}
+          fill={ev.color}
+          fontSize={FONT_SIZE}
+          fontFamily="inherit"
+          opacity={0.65}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {lines.map((line, i) => (
+            <tspan key={i} x={textX} dy={i === 0 ? 0 : NOTES_LINE_H}>{line}</tspan>
+          ))}
+        </text>
+      )}
+      
+      {/* Invisible hit area for click detection */}
+      <rect
+        x={isPoint ? x1 - 10 : x1}
+        y={0}
+        width={isPoint ? 20 : x2 - x1}
+        height={geo.yBottom + CONNECTOR_MARGIN}
+        fill="transparent"
+      />
+    </>
+  );
+}
+
 // ── Variant registry ──────────────────────────────────────────────────────────
 const VARIANT_COMPONENTS = {
   solid:   EventItemSolid,
   outline: EventItemOutline,
   label:   EventItemLabel,
+  line:    EventItemLine,
 };
 
 // ── Tooltip Component ─────────────────────────────────────────────────────────
@@ -749,7 +869,7 @@ export function EventItem({ layoutItem, viewStart, viewEnd, svgWidth, axisY, onC
       onMouseLeave={handleMouseLeave}
       style={{ cursor: 'pointer' }}
     >
-      <Variant ev={ev} geo={geo} />
+      <Variant ev={ev} geo={geo} axisY={axisY} />
     </g>
   );
 }

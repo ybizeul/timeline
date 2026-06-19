@@ -257,26 +257,37 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
 
           <div className="ee-field">
             <label className="ee-label">Manual position</label>
-            <div className="ee-lane">
-              <button
-                type="button"
-                className="ee-lane-btn"
-                onClick={() => nudgeLane('up')}
-                title="Move up one lane"
-                aria-label="Move up one lane"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                className="ee-lane-btn"
-                onClick={() => nudgeLane('down')}
-                title="Move down one lane"
-                aria-label="Move down one lane"
-              >
-                ↓
-              </button>
-            </div>
+            {draft.style === 'line' ? (
+              <div style={{ 
+                color: 'rgba(255, 255, 255, 0.4)', 
+                fontSize: '13px',
+                fontStyle: 'italic',
+                padding: '8px 0'
+              }}>
+                Not applicable for Line style
+              </div>
+            ) : (
+              <div className="ee-lane">
+                <button
+                  type="button"
+                  className="ee-lane-btn"
+                  onClick={() => nudgeLane('up')}
+                  title="Move up one lane"
+                  aria-label="Move up one lane"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="ee-lane-btn"
+                  onClick={() => nudgeLane('down')}
+                  title="Move down one lane"
+                  aria-label="Move down one lane"
+                >
+                  ↓
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="ee-divider" />
