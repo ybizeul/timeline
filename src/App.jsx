@@ -228,11 +228,11 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
-  // Restore tlHeight when switching timelines
+  // Restore tlHeight when switching timelines or when viewport is loaded from server
   useEffect(() => {
     const restored = Number(viewport.tlHeight);
     setTlHeight(Number.isFinite(restored) && restored >= MIN_TL_HEIGHT ? restored : DEFAULT_TL_HEIGHT);
-  }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeId, viewport.tlHeight]);
 
   const handleResizePointerDown = useCallback((e) => {
     e.preventDefault();

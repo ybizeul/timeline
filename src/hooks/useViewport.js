@@ -169,15 +169,37 @@ export function useViewport(activeId, useServer = isServerMode) {
 
   // Save viewport on page unload so the final position is never lost
   useEffect(() => {
-    if (useServer) return;
-    const save = () =>
-      localStorage.setItem(
-        STORAGE_PREFIX + activeIdRef.current,
-        JSON.stringify(normalizeViewport(viewportRef.current)),
-      );
+    const save = () => {
+      if (!useServer) {
+        localStorage.setItem(
+          STORAGE_PREFIX + activeIdRef.current,
+          JSON.stringify(normalizeViewport(viewportRef.current)),
+        );
+        return;
+      }
+      // For server mode, flush any pending state immediately before unload
+      if (persistTimeoutRef.current) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+      if (share.mode === 'timeline' && share.itemId) {
+        return;
+      }
+      const normalized = normalizeViewport(viewportRef.current);
+      // Use fetch with keepalive for reliability during page unload
+      fetch(`/api/private/timelines/${activeIdRef.current}/state`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          viewport: normalized,
+          savedPosition: savedPositionRef.current || {},
+        }),
+        keepalive: true, // Ensures request completes even after page unload
+      }).catch(() => {}); // Ignore errors during unload
+    };
     window.addEventListener('beforeunload', save);
     return () => window.removeEventListener('beforeunload', save);
-  }, [useServer]);
+  }, [useServer, share.itemId, share.mode]);
 
   const svgWidthRef = useRef(0);
   const initialResizeRef = useRef(true);
