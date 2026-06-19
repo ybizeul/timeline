@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { IconAlignLeft, IconAlignCenter, IconAlignRight } from '@tabler/icons-react';
 import { EVENT_COLORS, GRAY_COLORS, DEFAULT_COLOR } from '../../utils/colors';
 import { EVENT_STYLES, DEFAULT_EVENT_STYLE } from '../Timeline/EventItem';
 import './EventEditor.css';
@@ -222,7 +223,7 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
 
           <div className="ee-field">
             <label className="ee-label">Display style</label>
-            <div className="ee-align">
+            <div className="ee-styles">
               {EVENT_STYLES.map(({ id, label }) => (
                 <button
                   key={id}
@@ -239,9 +240,9 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
           <div className="ee-field">
             <label className="ee-label">Alignment</label>
             <div className="ee-align">
-              {[['left', '⬝▬▬', 'Left — rect starts at date'],
-                ['center', '▬⬝▬', 'Center — rect centered on date'],
-                ['right', '▬▬⬝', 'Right — rect ends at date']].map(([val, icon, tip]) => (
+              {[['left', IconAlignLeft, 'Left — rect starts at date'],
+                ['center', IconAlignCenter, 'Center — rect centered on date'],
+                ['right', IconAlignRight, 'Right — rect ends at date']].map(([val, Icon, tip]) => (
                 <button
                   key={val}
                   type="button"
@@ -249,7 +250,7 @@ export function EventEditor({ event, defaultStart, isOpen, onSave, onDelete, onC
                   onClick={() => set('align', val)}
                   title={tip}
                 >
-                  {val.charAt(0).toUpperCase() + val.slice(1)}
+                  <Icon size={18} stroke={1.5} />
                 </button>
               ))}
             </div>

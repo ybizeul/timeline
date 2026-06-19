@@ -16,7 +16,7 @@ function eventHeight(ev) {
 export const EVENT_STYLES = [
   { id: 'solid',   label: 'Solid' },
   { id: 'outline', label: 'Outline' },
-  { id: 'label',   label: 'Label only' },
+  { id: 'label',   label: 'Label' },
   { id: 'line',    label: 'Line' },
 ];
 export const DEFAULT_EVENT_STYLE = 'solid';

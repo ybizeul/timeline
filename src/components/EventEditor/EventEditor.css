@@ -181,15 +181,30 @@
   cursor: not-allowed;
 }
 
+/* ── Display styles ─────────────────────────────────────────── */
+.ee-styles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.ee-styles .ee-align-btn {
+  width: auto;
+  padding: 7px 8px;
+}
+
 /* ── Alignment picker ───────────────────────────────────────── */
 .ee-align {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: 6px;
 }
 
 .ee-align-btn {
-  padding: 7px 0;
+  width: 34px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius);
   font-size: 12px;
   font-weight: 500;
